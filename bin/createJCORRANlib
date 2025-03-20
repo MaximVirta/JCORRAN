@@ -1,7 +1,10 @@
 #!/bin/bash
 CURDIR=$PWD
 cd $( jcorran-config-path )/src/Base
-rm -f *.o
+rm -f *.o jcorranDict*
+rm ../../include/jcorranDict*
+echo "Creating root dictonary file..."
+rootcling jcorranDict.cxx ../../include/*.h -s ../../include/jcorranDict
 echo "Creating JCORRAN lib to $( jcorran-config-path )/lib"
 g++ -c *.cxx $( root-config --cflags ) -I../../include
 ar rcs ../../lib/libJCORRANbase.a *.o && echo "JCorran library created succesfully!"

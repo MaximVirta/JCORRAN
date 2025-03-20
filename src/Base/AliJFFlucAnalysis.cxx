@@ -966,14 +966,14 @@ Double_t AliJFFlucAnalysis::Fill_QA_plot( Double_t eta1, Double_t eta2 )
         pt_emean = pt_emean/ntracks;
 
         Double_t ptMean = 0.0;
-		Double_t nchMean = 0.0;
+	Double_t nchMean = 0.0;
         if (b_vnpt_graphs) {
         	// printf("Setting mean pT\n");
                 ptMean = gr_pt->GetPointY(fCBin);
-				nchMean = gr_nch->GetPointY(fCBin);
+		nchMean = gr_nch->GetPointY(fCBin);
         }
         dpt = pt_emean-ptMean;
-		Double_t dnch = ntracks - nchMean;
+	Double_t dnch = ntracks - nchMean;
 
         if (fDebug) printf("Filling dpt histograms...\n");
         fh_dpt[fCBin]->Fill(dpt);
