@@ -7,6 +7,11 @@ Recent papers to produce the results:
 - Phys.Lett.B 835 (2022) 137485: New constraints for QCD matter from improved Bayesian parameter estimation in heavy-ion collisions at LHC
 - arXiv:2411.01932: Enhancing Bayesian parameter estimation by adapting to multiple energy scales in RHIC and LHC heavy-ion collisions
 
+## Requirements
+
+- ROOT framework (https://root.cern.ch/) must be installed and properly configured
+- C++ compiler (g++ recommended)
+
 ## Installation
 
 1. Clone this repository
