@@ -7,7 +7,6 @@
 #include <TClonesArray.h>
 #include "AliJBaseTrack.h"
 #include "AliJFFlucAnalysis.h"
-#include "AliJEfficiency.h"
 #pragma GCC diagnostic warning "-Wall"
 
 //ClassImp(AliJFFlucAnalysis)
@@ -16,7 +15,6 @@
 AliJFFlucAnalysis::AliJFFlucAnalysis() :
 	//: AliAnalysisTaskSE(),
 	fInputList(0),
-	fEfficiency(0), // pointer to tracking efficiency
 	fVertex(0),
 	pPhiWeights(0),
 	pPhiWeightsAna(0),
@@ -73,7 +71,6 @@ AliJFFlucAnalysis::AliJFFlucAnalysis() :
 AliJFFlucAnalysis::AliJFFlucAnalysis(const char *name) :
 	//: AliAnalysisTaskSE(name),
 	fInputList(0),
-	fEfficiency(0),
 	fVertex(0),
 	pPhiWeights(0),
 	pPhiWeightsAna(0),
@@ -142,7 +139,6 @@ UInt_t AliJFFlucAnalysis::NpttJacek = sizeof(AliJFFlucAnalysis::pttJacek)/sizeof
 AliJFFlucAnalysis::AliJFFlucAnalysis(const AliJFFlucAnalysis& a):
 	//AliAnalysisTaskSE(a.GetName()),
 	fInputList(a.fInputList),
-	fEfficiency(a.fEfficiency),
 	fVertex(a.fVertex),
 	pPhiWeights(a.pPhiWeights),
 	pPhiWeightsAna(a.pPhiWeightsAna),
@@ -220,12 +216,6 @@ void AliJFFlucAnalysis::Init(Int_t paramID, TString fname){
 }
 //________________________________________________________________________
 void AliJFFlucAnalysis::UserCreateOutputObjects(){
-	fEfficiency = new AliJEfficiency();
-	cout << "********" << endl;
-	cout << fEffMode << endl ;
-	cout << "********" << endl;
-	fEfficiency->SetMode( fEffMode ) ; // 0:NoEff 1:Period 2:RunNum 3:Auto
-	fEfficiency->SetDataPath( "alien:///alice/cern.ch/user/d/djkim/legotrain/efficieny/data" );
 	
 	fHMG = new AliJHistManager("AliJFFlucHistManager","jfluc");
 	// set AliJBin here //
@@ -532,7 +522,6 @@ void AliJFFlucAnalysis::UserCreateOutputObjects(){
 //________________________________________________________________________
 AliJFFlucAnalysis::~AliJFFlucAnalysis() {
 	delete fHMG;
-	delete fEfficiency;
 }
 
 #define A i
@@ -953,8 +942,7 @@ Double_t AliJFFlucAnalysis::Fill_QA_plot( Double_t eta1, Double_t eta2 )
 		}
 
 		Double_t pt = itrack->Pt();
-		Double_t effCorr = fEfficiency->GetCorrection( pt, fEffFilterBit, fCent);
-		Double_t effInv = 1.0/effCorr;
+		Double_t effInv = 1.0;
 
 		pt_emean = pt_emean + pt;
 
@@ -1041,7 +1029,7 @@ TComplex AliJFFlucAnalysis::Get_Qn_pt(Double_t eta1, Double_t eta2, int harmonic
 			if(w > 1e-6)
 				phi_module_corr = w;
 		}
-		Double_t effCorr = fEfficiency->GetCorrection( pt, fEffFilterBit, fCent);
+		Double_t effCorr = 1.0;
 
 		Double_t tf = 1.0/(phi_module_corr*effCorr);
 		Qn += TComplex(tf*TMath::Cos(nh*phi),tf*TMath::Sin(nh*phi));
@@ -1107,7 +1095,7 @@ void AliJFFlucAnalysis::CalculateQvectorsQC(double etamin, double etamax){
 			if(w > 1e-6)
 				phi_module_corr = w;
 		}
-		Double_t effCorr = fEfficiency->GetCorrection( pt, fEffFilterBit, fCent);
+		Double_t effCorr = 1.0;
 
 		for(int ih=0; ih<kNH; ih++){
 			Double_t tf = 1.0;

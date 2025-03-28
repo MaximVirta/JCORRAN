@@ -11,7 +11,6 @@
 #ifndef ALIANALYSISPtVn_H
 #define ALIANALYSISPtVn_H
 
-//#include "AliHeader.h"
 #include "TComplex.h"
 #include "TList.h"
 #include "TH1F.h"
@@ -23,7 +22,6 @@
 #include <vector>
 #include <complex>
 
-#include "AliJEfficiency.h"
 
 class TClonesArray;
 class AliAnalysisPtVn {

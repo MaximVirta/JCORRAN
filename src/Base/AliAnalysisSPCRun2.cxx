@@ -34,10 +34,8 @@ AliAnalysisSPCRun2::AliAnalysisSPCRun2():
   fcent_10(0.), fcent_11(0.), fcent_12(0.), fcent_13(0.), fcent_14(0.),
   fcent_15(0.), fcent_16(0.),
   fCentralityBins(16), fMinNumberPart(14),
-  bUseWeightsNUE(kTRUE), bUseWeightsNUA(kTRUE),
-  bComputeEtaGap(kFALSE), bUseJoinedCov(kFALSE), fEtaGap(0.8),
   bSaveAllQA(kTRUE),
-  fCounterHistogram(NULL), fProfileTrackCuts(NULL)
+  fCounterHistogram(NULL)
 {
 // Dummy constructor of the class.
   printf("AliAnalysisSPCRun2::AliAnalysisSPCRun2()\n");
@@ -54,10 +52,8 @@ AliAnalysisSPCRun2::AliAnalysisSPCRun2(const char *name):
   fcent_10(0.), fcent_11(0.), fcent_12(0.), fcent_13(0.), fcent_14(0.),
   fcent_15(0.), fcent_16(0.),
   fCentralityBins(9), fMinNumberPart(14),
-  bUseWeightsNUE(kFALSE), bUseWeightsNUA(kFALSE),
-  bComputeEtaGap(kFALSE), bUseJoinedCov(kFALSE), fEtaGap(0.8),
   bSaveAllQA(kTRUE),
-  fCounterHistogram(NULL), fProfileTrackCuts(NULL)
+  fCounterHistogram(NULL)
 {
 // Constructor of the class.
   printf("AliAnalysisSPCRun2::AliAnalysisSPCRun2(const char *name)\n");
@@ -96,11 +92,6 @@ void AliAnalysisSPCRun2::UserCreateOutputObjects()
   //cout << "books some lists" << endl;
   if (bSaveAllQA) {BookControlHistograms();}
   this->BookFinalResultsHistograms();
-  //cout << "Books final histos" << endl;
-  // Fill the corresponding profile with the values of each cut. 
-  fProfileTrackCuts->Fill(0.5, fMinNumberPart);
-  if (bUseWeightsNUE) {fProfileTrackCuts->Fill(1.5, 1);} 
-  if (bUseWeightsNUA) {fProfileTrackCuts->Fill(2.5, 1);} 
 
   // *) Trick to avoid name clashes, part 2.
   ///TH1::AddDirectory(oldHistAddStatus);
@@ -121,7 +112,6 @@ void AliAnalysisSPCRun2::UserExec(Option_t *option)
 // Execute the analysis for each provided event in the input sample.
   // Fill the first bin of the counter histogram, to check if UserExec is entered properly.
   fCounterHistogram->Fill(0.5);
-  Bool_t bUseJoinedCov = kFALSE;
   // Get the class bin corresponding to the centrality of the current event.
   Int_t centralityBin = SelectCentrality(fCentrality);
   //cout << fCentrality << endl;
@@ -139,14 +129,12 @@ void AliAnalysisSPCRun2::UserExec(Option_t *option)
   Double_t* angles = new Double_t[nTracks];   // Azimuthal angles.
   Double_t* pt = new Double_t[nTracks];       // Transverse momenta.
   Double_t* eta = new Double_t[nTracks];      // Pseudorapidity.
-  Double_t* weights = new Double_t[nTracks];  // Particle weights.
   for (Int_t iTrack = 0; iTrack < nTracks; iTrack++)
   {
     Double_t iPhi = 0.;
     Double_t iPt = 0.;
     Double_t iEta = 0.;
     Double_t iCharge = 0.;
-    Double_t iWeight = 1.;  // Default value: unit particle weight.
 
     // Parse the selected track and get their information into the arrays.
     AliJBaseTrack *aTrack = (AliJBaseTrack*)fInputList->At(iTrack);
@@ -157,44 +145,26 @@ void AliAnalysisSPCRun2::UserExec(Option_t *option)
     iEta = aTrack->Eta();
     iCharge = aTrack->GetCharge();
 
-    Double_t iEffCorr = 1.;
-    Double_t iEffInverse = 1.;
-    Double_t phi_module_corr = 1.; // Doing it in AliJCatalyst while filling track information.
-
-    if (bUseWeightsNUE) {
-      iEffCorr = aTrack->GetTrackEff();
-      iEffInverse = 1.0/iEffCorr;
-    }
-    if (bUseWeightsNUA) {phi_module_corr = aTrack->GetWeight();}
-    //printf("iEffCorr: %.6f iPhiModuleCorr: %.6f \n", iEffCorr, phi_module_corr);
-    iWeight = iEffInverse/phi_module_corr;
-
     angles[iTrack] = iPhi; 
     pt[iTrack] = iPt; 
-    eta[iTrack] = iEta; 
-    weights[iTrack] = iWeight;
+    eta[iTrack] = iEta;
 
     // Fill the track QA if needed.
     if (bSaveAllQA) {
-      fPhiHistogram[centralityBin][0].Fill(iPhi, (1./phi_module_corr)); 
-      fPhiWeightProfile[centralityBin]->Fill(iPhi,(1./phi_module_corr));
+      fPhiHistogram[centralityBin][0].Fill(iPhi); 
       fEtaHistogram[centralityBin][0].Fill(iEta);
-      fPTHistogram[centralityBin][0].Fill(iPt, (1./iEffCorr));
+      fPTHistogram[centralityBin][0].Fill(iPt);
       fChargeHistogram[centralityBin]->Fill(iCharge); 
     }
 
   } // Go to the next iTrack.
 
   // Calculate the correlators needed for the SPC.
-  MainTask(centralityBin, nTracks, angles, weights);
-  if (bComputeEtaGap) {ComputeTPCWithEtaGaps(centralityBin, nTracks, angles, weights, eta);}
-  //fHistList->Write("HistoList",1);
-  // Reset event-by-event objects.
+  MainTask(centralityBin, nTracks, angles);
   nTracks = 0;
   delete [] angles; 
   delete [] pt;
   delete [] eta;
-  delete [] weights;
 }
 
 // ------------------------------------------------------------------------- //
@@ -237,13 +207,11 @@ void AliAnalysisSPCRun2::InitializeArrays()
     fPhiHistogram[icent] = NULL;
     fEtaHistogram[icent] = NULL;
     fChargeHistogram[icent] = NULL;
-    fPhiWeightProfile[icent] = NULL;
 
     //Output histograms.
     fResults[icent] = NULL;
     fResultsAlternativeError[icent] = NULL;
     fCovResults[icent] = NULL;
-    fJoinedCovResults[icent] = NULL;
     fProfileTPCEta[icent] = NULL;
   } // Go to the next centrality bin.
 }
@@ -301,13 +269,8 @@ void AliAnalysisSPCRun2::BookControlHistograms()
     1000, -TMath::Pi(), TMath::Pi());
   fPhiHistogram[icent]->GetXaxis()->SetTitle("Phi");
   fPhiHistogram[icent]->SetLineColor(4);
-  fControlHistogramsList[icent]->Add(fPhiHistogram[icent]);
 
-  fPhiWeightProfile[icent] = new TProfile("fPhiWeightProfile","Phi Weights",
-    100, -TMath::Pi(), TMath::Pi());
-  fPhiWeightProfile[icent]->GetXaxis()->SetTitle("#varphi");
-  fPhiWeightProfile[icent]->GetYaxis()->SetTitle("weight");
-  fControlHistogramsList[icent]->Add(fPhiWeightProfile[icent]);
+  fControlHistogramsList[icent]->Add(fPhiHistogram[icent]);
 
   // Pseudorapidity spectrum.
   fEtaHistogram[icent] = new TH1F("fEtaHistAfterTrackSelection","Eta Distribution", 1000,-1.,1.);
@@ -365,40 +328,21 @@ void AliAnalysisSPCRun2::BookFinalResultsHistograms()
     fCovResults[icent]->Sumw2();
     fFinalResultsList[icent]->Add(fCovResults[icent]); 
 
-    fJoinedCovResults[icent] = new TProfile("fJoinedCovResults",
-      "Joined Covariance calculated as one correlator <z> and not as <x*y>", 24, 0., 24.);
-    fJoinedCovResults[icent]->GetXaxis()->SetTitle("");
-    fJoinedCovResults[icent]->GetYaxis()->SetTitle("");
-    fJoinedCovResults[icent]->Sumw2();
-    fFinalResultsList[icent]->Add(fJoinedCovResults[icent]);
 
     fProfileTPCEta[icent] = new TProfile("fProfileTPCEta","2-particle correlators with eta gap",
       9, 0., 9.,"s");
     fProfileTPCEta[icent]->GetXaxis()->SetTitle("");
     fProfileTPCEta[icent]->GetYaxis()->SetTitle("");
-    fProfileTPCEta[icent]->Sumw2();
-    if (bComputeEtaGap) {fFinalResultsList[icent]->Add(fProfileTPCEta[icent]);}        
+    fProfileTPCEta[icent]->Sumw2();      
   } // Go to the next centrality bin.
 
   // Debugging histograms.
   fCounterHistogram = new TH1F("fCounterHistogram","Histogram for some checks", 3,0.,3.);
   fHistList->Add(fCounterHistogram);
-
-  //Profile to save the cut values for track selection.
-  fProfileTrackCuts = new TProfile("", "", 3, 0., 3.);
-  fProfileTrackCuts->SetName("fProfileTrackCuts");
-  fProfileTrackCuts->SetTitle("Configuration of the track selection");
-  fProfileTrackCuts->SetStats(kFALSE);
-  fProfileTrackCuts->GetXaxis()->SetBinLabel(1, "Multiplicity min");
-  fProfileTrackCuts->GetXaxis()->SetBinLabel(2, "NUE-Weights");
-  fProfileTrackCuts->GetXaxis()->SetBinLabel(3, "NUA-Weights");
-  fHistList->Add(fProfileTrackCuts);
 }
 
 // ------------------------------------------------------------------------- //
-void AliAnalysisSPCRun2::CalculateQvectors(Int_t c_nParticles,
-  Double_t* c_angles, Double_t* c_weights)
-{
+void AliAnalysisSPCRun2::CalculateQvectors(Int_t c_nParticles, Double_t* c_angles) {
 // Calculate Q-vectors. 
   // Ensure first that all Q-vectors are initially zero.
   for (Int_t h = 0; h < Nharm; h++)
@@ -408,20 +352,13 @@ void AliAnalysisSPCRun2::CalculateQvectors(Int_t c_nParticles,
 
   // Calculate the Q-vectors for the given angles and weights. 
   Double_t dPhi2 = 0.;         // Particle azimuthal angle.
-  Double_t wPhi = 1.;          // Particle weight.
-  Double_t wPhiToPowerP = 1.;  // Particle weight raised to power p.
 
   for (Int_t i = 0; i < c_nParticles; i++)
   {
     dPhi2 = c_angles[i];
-    if (bUseWeightsNUE || bUseWeightsNUA) {wPhi = c_weights[i];}
-    for (Int_t h = 0; h < Nharm; h++)
-    {
-      for (Int_t p = 0; p < Npart; p++)
-      {
-        if (bUseWeightsNUE || bUseWeightsNUA) {wPhiToPowerP = pow(wPhi,p);}
-        fQvector[h][p] += TComplex(wPhiToPowerP*TMath::Cos(h*dPhi2),
-          wPhiToPowerP*TMath::Sin(h*dPhi2));
+    for (Int_t h = 0; h < Nharm; h++) {
+      for (Int_t p = 0; p < Npart; p++) {
+        fQvector[h][p] += TComplex(TMath::Cos(h*dPhi2), TMath::Sin(h*dPhi2));
       } // Go to the next power.
     } // Go to the next harmonic.
   }  // Go to the next particle.
@@ -519,8 +456,7 @@ void AliAnalysisSPCRun2::SetInitializeCentralityArray()
 }
 
 // ------------------------------------------------------------------------- //
-void AliAnalysisSPCRun2::MainTask(Int_t centBin, Int_t mult,
-  Double_t* m_angles, Double_t* m_weights)
+void AliAnalysisSPCRun2::MainTask(Int_t centBin, Int_t mult, Double_t* m_angles)
 {
 // Calculate the SPC and error components for all the combinations of harmonics.
  // if (fDebugLevel > 5) {
@@ -528,7 +464,7 @@ void AliAnalysisSPCRun2::MainTask(Int_t centBin, Int_t mult,
 
   if (mult >= fMinNumberPart) {
     // Calculate all the Q-vectors for this current event.
-    CalculateQvectors(mult, m_angles, m_weights);
+    CalculateQvectors(mult, m_angles);
 
     // Declare the arrays to later fill all the needed bins for the correlators
     // and the error terms.
@@ -537,9 +473,6 @@ void AliAnalysisSPCRun2::MainTask(Int_t centBin, Int_t mult,
     Double_t weightCorrelationNum;
     Double_t correlationDenom;
     Double_t weightCorrelationDenom;
-
-    Double_t correlationJoinedCov;
-    Double_t weightCorrelationJoinedCov;
 
     // Loop over the combinations of harmonics and calculate the corresponding SPC num and den.
     for (Int_t j = 0; j < 12; j++) {
@@ -565,26 +498,6 @@ void AliAnalysisSPCRun2::MainTask(Int_t centBin, Int_t mult,
       correlationDenom = dataCorrelation[0];
       weightCorrelationDenom = dataCorrelation[1];
 
-      // Calculate the joined product of num*den as one single term.
-      // Works only if the order of the correlator is <= 4
-      if (fHarmosArray[j][0] <= 4 && bUseJoinedCov) {
-        if (fDebugLevel > 5) {printf("Calculating joined term.\n");}
-	Int_t nPartJoinedCov = 3*fHarmosArray[j][0];
-        Int_t hArrayJoinedCov[12] = {0};
-        for (int o = 0; o < 4; o++) {hArrayJoinedCov[o] = fHarmosArray[j][o+1];}
-        hArrayJoinedCov[4] = fHarmosArray[j][1];
-        hArrayJoinedCov[5] = -1*fHarmosArray[j][1];
-        hArrayJoinedCov[6] = fHarmosArray[j][2];
-        hArrayJoinedCov[7] = -1*fHarmosArray[j][2];
-        hArrayJoinedCov[8] = fHarmosArray[j][3];
-        hArrayJoinedCov[9] = -1*fHarmosArray[j][3];
-        hArrayJoinedCov[10] = fHarmosArray[j][4];
-        hArrayJoinedCov[11] = -1*fHarmosArray[j][4];
-        Correlation(nPartJoinedCov, 12, hArrayJoinedCov, dataCorrelation);  
-
-        correlationJoinedCov = dataCorrelation[0];
-        weightCorrelationJoinedCov = dataCorrelation[1];
-      } // End: if (fHarmosArray[j][0] <= 4)
 
       // Fill the corresponding bins in the results profiles.
       fResults[centBin]->Fill(2.*(Float_t)(j)+0.5, correlationNum, weightCorrelationNum);
@@ -601,16 +514,11 @@ void AliAnalysisSPCRun2::MainTask(Int_t centBin, Int_t mult,
       fCovResults[centBin]->Fill(4.*(Float_t)(j)+2.5, weightCorrelationNum, 1.); // w_N
       fCovResults[centBin]->Fill(4.*(Float_t)(j)+3.5, weightCorrelationDenom, 1.); // w_D 
 
-      fJoinedCovResults[centBin]->Fill(2.*(Float_t)(j)+0.5, correlationJoinedCov,
-        weightCorrelationJoinedCov); // Joined Cov Term z 
-      fJoinedCovResults[centBin]->Fill(2.*(Float_t)(j)+1.5, weightCorrelationJoinedCov, 1.);
 
       correlationNum = 0;
       weightCorrelationNum = 0;
       correlationDenom = 0;
       weightCorrelationDenom = 0;
-      correlationJoinedCov = 0;
-      weightCorrelationJoinedCov = 0;
 
     } // End of the loop over the harmonic combinations (j).
 
@@ -761,76 +669,8 @@ void AliAnalysisSPCRun2::Correlation(Int_t c_nPart, Int_t c_nHarmo, Int_t* harmo
 
 }
 
-// ------------------------------------------------------------------------- //
-void AliAnalysisSPCRun2::ComputeTPCWithEtaGaps(Int_t centBin, Int_t mult, Double_t* m_angles,
-  Double_t* m_weights, Double_t* m_pseudo)
-{
-// Compute the 2-particle correlators using eta gaps for the current event.
-  TComplex  Qminus[8]   = {TComplex(0., 0.)};   // Q-vectors for the negative subset of the eta range, for v_1 to v_8.
-  TComplex  Qplus[8]    = {TComplex(0., 0.)};   // Q-vectors for the positive subset of the eta range, for v_1 to v_8.
-  Float_t   Mminus[8]   = {0.};                 // Multiplicity in the negative subset of the eta range.
-  Float_t   Mplus[8]    = {0.};                 // Multiplicity in the positive subset of the eta range.
-  Float_t   iAngle          = 0.;                     // Azimuthal angle of the current particle.
-  Float_t   iWeight         = 1.;                     // Particle weight of the current particle (default: unit weight).
-  Float_t   iEta            = 0.;                     // Pseudorapidity of the current particle.
-  Float_t   iWeightToP      = 1.;                     // Particle weight rised to the power p.
-  TComplex  complexCorrel   = TComplex(0., 0.);       // Complex value of the 2-p correlator.
-  Double_t  realCorrel      = 0.;                     // Real value of the 2-p correlator.
 
-  fProfileTPCEta[centBin]->Fill(8.5, fEtaGap,1.); //Fill Eta Gap for saving purpose
-
-// Compute the Q-vectors for the negative and positive subsets of the eta range.
-  for (Int_t iPart = 0; iPart < mult; iPart++)
-  {
-  // Read the right elements in the provided arrays.
-    iAngle  = m_angles[iPart];
-    iWeight = m_weights[iPart];
-    iEta    = m_pseudo[iPart];
-    if (bUseWeightsNUE || bUseWeightsNUA) {iWeightToP = iWeight;}   // All weights are multiplied to get the final one.
-
-  // Compute the Q-vectors.
-    if (iEta < 0.)    // Negative subset of the eta range.
-    {
-      for (Int_t iHarmo = 0; iHarmo < 8; iHarmo++)
-      {
-        if (iEta < ((-0.5)*fEtaGap))    // Compute only if the particle is in the range.
-        {
-          Qminus[iHarmo] += TComplex(iWeightToP*TMath::Cos((iHarmo+1)*iAngle), iWeightToP*TMath::Sin((iHarmo+1)*iAngle));
-          Mminus[iHarmo] += iWeightToP;
-        }
-        else {continue;}
-      }   // End of the loop over the harmonics.
-    }   // End of the condition "negative subset".
-    else if (iEta > 0.)   // Positive subset of the eta range.
-    {
-      for (Int_t iHarmo = 0; iHarmo < 8; iHarmo++)
-      {
-        if (iEta > (0.5*fEtaGap))   // Compute only if the particle is in the range.
-        {
-          Qplus[iHarmo] += TComplex(iWeightToP*TMath::Cos((iHarmo+1)*iAngle), iWeightToP*TMath::Sin((iHarmo+1)*iAngle));
-          Mplus[iHarmo] += iWeightToP;
-        } 
-      }   // End of the loop over the harmonics.
-    }   // End of the condition "positive subset".
-    else {continue;}    // Particle with iEta = 0.
-  }   // End of the loop over the particles for the Q-vectors.
-
-// Compute the 2-p correlators using Qminus and Qplus.
-  for (Int_t iHarmo = 0; iHarmo < 8; iHarmo++)
-  {
-    if (!( (Qminus[iHarmo].TComplex::Rho() > 0.) && (Qplus[iHarmo].TComplex::Rho() > 0.) )) {continue;}
-    if (!( (Mminus[iHarmo] > 0.) && (Mplus[iHarmo] > 0.) )) {continue;}
-
-    complexCorrel = Qminus[iHarmo]*TComplex::Conjugate(Qplus[iHarmo]);
-    realCorrel    = (complexCorrel.Re())/(Mminus[iHarmo]*Mplus[iHarmo]);
-    fProfileTPCEta[centBin]->Fill(iHarmo + 0.5, realCorrel, Mminus[iHarmo]*Mplus[iHarmo]); //GANESHA declare
-
-    // Reset the 2-particle correlator.
-    complexCorrel = TComplex(0.,0.);
-    realCorrel    = 0.;    
-  }   // End of the loop over the harmonics.
-
-}
+///////////////////////////////
 void AliAnalysisSPCRun2::SetSPC(Int_t spcNr) {
   switch(spcNr){
     case 0:{

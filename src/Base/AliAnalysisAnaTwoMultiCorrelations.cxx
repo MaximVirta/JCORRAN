@@ -40,9 +40,6 @@ AliAnalysisAnaTwoMultiCorrelations::AliAnalysisAnaTwoMultiCorrelations():
   fCentrality(-1), fCentralityBin(-1),
   fMultiplicity(0), fMultiplicityMin(10),
   fPtMin(0.2), fPtMax(5.0),
-  fEfficiency(NULL), fFirstEvent(kTRUE),
-  fUseJEfficiency(kTRUE), fFilterbitIndex(0),
-  fHistoEfficiency(NULL), fHistoEffInverse(NULL),
   fNCombi(7), fGetSC(kTRUE), fGetLowerHarmos(kTRUE)
 {
 // Dummy constructor of the class.
@@ -56,9 +53,6 @@ AliAnalysisAnaTwoMultiCorrelations::AliAnalysisAnaTwoMultiCorrelations(const cha
   fCentrality(-1), fCentralityBin(-1),
   fMultiplicity(0), fMultiplicityMin(10),
   fPtMin(0.2), fPtMax(5.0),
-  fEfficiency(NULL), fFirstEvent(kTRUE),
-  fUseJEfficiency(kTRUE), fFilterbitIndex(0),
-  fHistoEfficiency(NULL), fHistoEffInverse(NULL),
   fNCombi(7), fGetSC(kTRUE), fGetLowerHarmos(kTRUE)
 {
 // Constructor of the class.
@@ -82,24 +76,13 @@ AliAnalysisAnaTwoMultiCorrelations::~AliAnalysisAnaTwoMultiCorrelations()
 void AliAnalysisAnaTwoMultiCorrelations::UserCreateOutputObjects()
 {
 // Declare the outputs of the task at the beginning of the analysis.
-  if (fUseJEfficiency)
-  {
-    fEfficiency = new AliJEfficiency();
-    fEfficiency->SetMode(1);  // 1: priod should work for you
-    fEfficiency->SetDataPath("alien:///alice/cern.ch/user/d/djkim/legotrain/efficieny/data");
-  }
-
   this->BookFinalResults();
-  fFirstEvent = kTRUE;
 }
 
 /* ------------------------------------------------------------------------- */
 void AliAnalysisAnaTwoMultiCorrelations::UserExec(Option_t *)
 {
 // Execute the analysis for each event in the input sample.
-
-// If chosen: get the run number and load the correct NUE correction.
-  if (fFirstEvent) {fFirstEvent = kFALSE;}
 
 // Get the centrality and multiplicity of the trimmed events and reject
 // the ones with not enough tracks.
@@ -111,10 +94,7 @@ void AliAnalysisAnaTwoMultiCorrelations::UserExec(Option_t *)
   Double_t *iPt  = new Double_t[fMultiplicity]();       // Transverse momentum.
   double *iEta = new double[fMultiplicity]();   // Pseudorapidity.
   Double_t *iPhi = new Double_t[fMultiplicity]();       // Azimuthal angles.
-  Double_t *iWeights = new Double_t[fMultiplicity]();   // Particle weights.
   Int_t iIndex = 0;           // Index of the selected track in the final arrays.
-  Float_t iEffCorr = 1.;      // Efficiency (Inverse gives the pT-weight).
-  Float_t iEffInverse = 1.;   // Inverse of the efficiency correction.
 
   for (Int_t iTrack = 0; iTrack < fMultiplicity; iTrack++) {
     AliJBaseTrack *aTrack = (AliJBaseTrack*)fInputList->At(iTrack);
@@ -123,18 +103,12 @@ void AliAnalysisAnaTwoMultiCorrelations::UserExec(Option_t *)
     iPt[iIndex] = aTrack->Pt();
     iEta[iTrack] = aTrack->Eta();
     iPhi[iTrack] = aTrack->Phi();
-    iWeights[iIndex] = 1.;  // Unit particle weight. Updated just after if needed.
-    if (fUseJEfficiency) {
-      iEffCorr = fEfficiency->GetCorrection(iPt[iIndex], fFilterbitIndex, fCentrality);
-      iEffInverse = 1.0/iEffCorr;
-      iWeights[iIndex] = iEffInverse;
-    }
 
     iIndex++;
   }
 
 // Compute the Q-vectors and multiparticle correlations.
-  CalculateQvectors(fMultiplicity, iPhi, iWeights);
+  CalculateQvectors(fMultiplicity, iPhi);
   ComputeAllTerms();
 
 // Reset the variables for the next event.
@@ -142,8 +116,6 @@ void AliAnalysisAnaTwoMultiCorrelations::UserExec(Option_t *)
   delete [] iPt;
   delete [] iEta;
   delete [] iPhi;
-  delete [] iWeights;
-  iEffCorr = 1.;
 }
 
 /* ------------------------------------------------------------------------- */
@@ -252,12 +224,10 @@ void AliAnalysisAnaTwoMultiCorrelations::BookFinalResults()
 }
 
 // ------------------------------------------------------------------------- //
-void AliAnalysisAnaTwoMultiCorrelations::CalculateQvectors(Long64_t multiplicity, Double_t angles[], Double_t pWeights[])
+void AliAnalysisAnaTwoMultiCorrelations::CalculateQvectors(Long64_t multiplicity, Double_t angles[])
 {
 // Calculate the needed Q-vectors.
   Double_t iAngle = 0.; // Azimuthal angle of the current track.
-  Double_t iWeight = 0.;  // Particle weight of the current track.
-  Double_t iWeightToPowerP = 0.;  // Particle weight rised to the power p.
 
 // Ensure all the Q-vectors are initially zero.
   for (Int_t iHarmo = 0; iHarmo < 81; iHarmo++){
@@ -269,19 +239,14 @@ void AliAnalysisAnaTwoMultiCorrelations::CalculateQvectors(Long64_t multiplicity
 // Compute the Q-vectors.
   for (Long64_t iTrack = 0; iTrack < multiplicity; iTrack++){
     iAngle = angles[iTrack];
-    iWeight = pWeights[iTrack];
     for (Int_t iHarmo = 0; iHarmo < 81; iHarmo++){
       for (Int_t iPower = 0; iPower < 11; iPower++){
-        iWeightToPowerP = TMath::Power(iWeight, iPower);
-        fQvectors[iHarmo][iPower] += TComplex(iWeightToPowerP*TMath::Cos(iHarmo*iAngle), iWeightToPowerP*TMath::Sin(iHarmo*iAngle));
+        fQvectors[iHarmo][iPower] += TComplex(TMath::Cos(iHarmo*iAngle), TMath::Sin(iHarmo*iAngle));
       }
     }
   }
-
 // Reset the variables.
   iAngle = 0.;
-  iWeight = 0.;
-  iWeightToPowerP = 0.;
 }
 
 // ------------------------------------------------------------------------- //
