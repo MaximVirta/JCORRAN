@@ -1,0 +1,11 @@
+# .o files
+*.o
+
+#.a files
+*.a
+
+#rcm dictonary file
+*.pcm
+
+# Example main file
+Example_JCorran/main
