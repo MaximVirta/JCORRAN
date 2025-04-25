@@ -24,6 +24,7 @@
 #include <AliAnalysisAnaTwoMultiCorrelations.h>
 #include <AliAnalysisSPCRun2.h>
 #include <AliAnalysisPtVn.h>
+#include <AliAnalysisMeanPt.h>
 
 
 typedef unsigned int uint;
@@ -75,6 +76,7 @@ int main(int argc, char **pargv){
 
 	AliAnalysisPtVn *pca_PtVn = new AliAnalysisPtVn("PtVnCorr");
 	AliAnalysisSPCRun2 *pspc = new AliAnalysisSPCRun2("SPC");
+	AliAnalysisMeanPt *pmpt = new AliAnalysisSPCRun2("meanPt");
 
 	if (bSC) {
 		cout << "Computing SC" << endl;
