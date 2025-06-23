@@ -21,6 +21,7 @@
 #include "AliJBaseTrack.h"
 #include "TClonesArray.h"
 
+#include "AliJEfficiency.h"
 
 class TClonesArray;
 class AliAnalysisSPCRun2 {
@@ -39,11 +40,12 @@ class AliAnalysisSPCRun2 {
   virtual void BookAndNestAllLists();
   virtual void BookControlHistograms();
   virtual void BookFinalResultsHistograms();
-  virtual void CalculateQvectors(Int_t c_nParticles, Double_t* c_angles);
+  virtual void CalculateQvectors(Int_t c_nParticles, Double_t* c_angles, Double_t* c_weights);
   TComplex Q(Int_t n, Int_t p);
   TComplex Recursion(Int_t n, Int_t* harmonic, Int_t mult, Int_t skip);
-  virtual void MainTask(Int_t centBin, Int_t mult, Double_t* m_angles);
+  virtual void MainTask(Int_t centBin, Int_t mult, Double_t* m_angles, Double_t* m_weights);
   virtual void Correlation(Int_t c_nPart, Int_t c_nHarmo, Int_t* harmo, Double_t *correlData);
+  virtual void ComputeTPCWithEtaGaps(Int_t centBin, Int_t mult, Double_t* m_angles, Double_t* m_weights, Double_t* m_pseudo);
   virtual void SetSPC(Int_t spcNr);
 
   /// General setters/getters.
@@ -71,11 +73,20 @@ class AliAnalysisSPCRun2 {
 
   void SetMinNuPar(Int_t top) {fMinNumberPart = top;} 
   Int_t GetMinNuPar() const {return fMinNumberPart;}
+  void SetEtaGaps(Bool_t ComputeEtaGap, Float_t EtaGap) {
+    bComputeEtaGap = ComputeEtaGap;
+    fEtaGap = EtaGap;
+  }
 
   /// Correlator-related methods.
   void SetCorrSet(Int_t obsInd, Int_t harmo[8]) {
     for (int i = 0; i < 8; i++) {fHarmosArray[obsInd][i] = harmo[i];}
   }
+
+  void SetUseJoinedCov(Bool_t joinedCov) {this->bUseJoinedCov = joinedCov;}
+
+  // Add this declaration
+  Int_t GetCentralityBin(Double_t centrality);
 
  private:
   AliAnalysisSPCRun2(const AliAnalysisSPCRun2& aat);
@@ -92,8 +103,15 @@ class AliAnalysisSPCRun2 {
   Int_t fCentralityBins;            //! Number of centrality bins (Size(array)-1).
   Int_t fMinNumberPart;             // Minimum number of particles to get valid correlators.
 
+  Bool_t bUseWeightsNUE;            // kTRUE: Use non-unit particle weights for NUE corrections.
+  Bool_t bUseWeightsNUA;            // kTRUE: Use non-unit particle weights for NUA corrections.
+  Bool_t bComputeEtaGap;            // kTRUE: Calculate 2-particle eta gaps (default: kFALSE).
+  Bool_t bUseJoinedCov;
+  Float_t fEtaGap;                  // Value of the eta gap itself.
+
   Bool_t bSaveAllQA;                // kTRUE: Save the standard QA histograms (default: kTRUE).
   TH1F *fCounterHistogram;          //! Counters for some QA checks.
+  TProfile *fProfileTrackCuts;      //! Storage of the values used in some cuts.
 
   const static Int_t Nharm = 21;
   const static Int_t Npart = 15;
@@ -113,11 +131,14 @@ class AliAnalysisSPCRun2 {
   TH1F *fPhiHistogram[16];          //! Azimuthal angles of the final tracks.
   TH1F *fEtaHistogram[16];          //! Pseudorapidity of the final tracks.
   TH1I *fChargeHistogram[16];       //! Electric charge after the track selection.
+  TProfile *fPhiWeightProfile[16];  //! QA for the NUA weights.
 
   TProfile *fResults[16];           //! Final numerators and denominators.
   TProfile *fTestProfile[16];
   TProfile *fResultsAlternativeError[16]; //! 'fResults' with different error options
   TProfile *fCovResults[16];        //! Storage of the terms needed for the covariance.
+  TProfile *fJoinedCovResults[16];  //! Storage of the joined covariance term calculated as one
+                                    //  correlator <z> instead of product of two correlators <x*y>.
   TProfile *fProfileTPCEta[16];     //! Profile for 2-particle eta gap computation.
   Float_t fCentralityArray[17];     //! Edges for the centrality division. (0-80% with 5% width).
 

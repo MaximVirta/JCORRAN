@@ -40,6 +40,9 @@ AliAnalysisAnaTwoMultiCorrelations::AliAnalysisAnaTwoMultiCorrelations():
   fCentrality(-1), fCentralityBin(-1),
   fMultiplicity(0), fMultiplicityMin(10),
   fPtMin(0.2), fPtMax(5.0),
+  fEfficiency(NULL), fFirstEvent(kTRUE),
+  fUseJEfficiency(kTRUE), fFilterbitIndex(0),
+  fHistoEfficiency(NULL), fHistoEffInverse(NULL),
   fNCombi(7), fGetSC(kTRUE), fGetLowerHarmos(kTRUE)
 {
 // Dummy constructor of the class.
@@ -53,6 +56,9 @@ AliAnalysisAnaTwoMultiCorrelations::AliAnalysisAnaTwoMultiCorrelations(const cha
   fCentrality(-1), fCentralityBin(-1),
   fMultiplicity(0), fMultiplicityMin(10),
   fPtMin(0.2), fPtMax(5.0),
+  fEfficiency(NULL), fFirstEvent(kTRUE),
+  fUseJEfficiency(kTRUE), fFilterbitIndex(0),
+  fHistoEfficiency(NULL), fHistoEffInverse(NULL),
   fNCombi(7), fGetSC(kTRUE), fGetLowerHarmos(kTRUE)
 {
 // Constructor of the class.
@@ -69,14 +75,25 @@ AliAnalysisAnaTwoMultiCorrelations::AliAnalysisAnaTwoMultiCorrelations(const cha
 AliAnalysisAnaTwoMultiCorrelations::~AliAnalysisAnaTwoMultiCorrelations()
 {
 // Destructor of the class.
-  if (fMainList) {delete fMainList;}
+  if (fMainList) {
+    delete fMainList;
+    fMainList = NULL;
+  }
 }
 
 /* ------------------------------------------------------------------------- */
 void AliAnalysisAnaTwoMultiCorrelations::UserCreateOutputObjects()
 {
 // Declare the outputs of the task at the beginning of the analysis.
+  if (fUseJEfficiency)
+  {
+    fEfficiency = new AliJEfficiency();
+    fEfficiency->SetMode(1);  // 1: priod should work for you
+    fEfficiency->SetDataPath("alien:///alice/cern.ch/user/d/djkim/legotrain/efficieny/data");
+  }
+
   this->BookFinalResults();
+  fFirstEvent = kTRUE;
 }
 
 /* ------------------------------------------------------------------------- */
@@ -84,17 +101,34 @@ void AliAnalysisAnaTwoMultiCorrelations::UserExec(Option_t *)
 {
 // Execute the analysis for each event in the input sample.
 
+// If chosen: get the run number and load the correct NUE correction.
+  if (fFirstEvent) {fFirstEvent = kFALSE;}
+
 // Get the centrality and multiplicity of the trimmed events and reject
 // the ones with not enough tracks.
   fMultiplicity = fInputList->GetEntriesFast();
+  // Skip events with centrality outside our range
+  if (fCentrality < 0 || fCentrality > 80) {
+      std::cout << "Skipping event with centrality " << fCentrality << "%" << std::endl;
+      return;
+  }
+
   fCentralityBin = GetCentralityBin(fCentrality);
+  if (fCentralityBin < 0 || fCentralityBin >= 9) {
+    std::cerr << "ERROR: Invalid centrality bin " << fCentralityBin 
+              << " for centrality " << fCentrality << std::endl;
+    return;  // Skip this event
+  }
   if (fMultiplicity < fMultiplicityMin) {return;}
 
 // Get the information on the selected tracks.
   Double_t *iPt  = new Double_t[fMultiplicity]();       // Transverse momentum.
   double *iEta = new double[fMultiplicity]();   // Pseudorapidity.
   Double_t *iPhi = new Double_t[fMultiplicity]();       // Azimuthal angles.
+  Double_t *iWeights = new Double_t[fMultiplicity]();   // Particle weights.
   Int_t iIndex = 0;           // Index of the selected track in the final arrays.
+  Float_t iEffCorr = 1.;      // Efficiency (Inverse gives the pT-weight).
+  Float_t iEffInverse = 1.;   // Inverse of the efficiency correction.
 
   for (Int_t iTrack = 0; iTrack < fMultiplicity; iTrack++) {
     AliJBaseTrack *aTrack = (AliJBaseTrack*)fInputList->At(iTrack);
@@ -103,12 +137,18 @@ void AliAnalysisAnaTwoMultiCorrelations::UserExec(Option_t *)
     iPt[iIndex] = aTrack->Pt();
     iEta[iTrack] = aTrack->Eta();
     iPhi[iTrack] = aTrack->Phi();
+    iWeights[iIndex] = 1.;  // Unit particle weight. Updated just after if needed.
+    if (fUseJEfficiency) {
+      iEffCorr = fEfficiency->GetCorrection(iPt[iIndex], fFilterbitIndex, fCentrality);
+      iEffInverse = 1.0/iEffCorr;
+      iWeights[iIndex] = iEffInverse;
+    }
 
     iIndex++;
   }
 
 // Compute the Q-vectors and multiparticle correlations.
-  CalculateQvectors(fMultiplicity, iPhi);
+  CalculateQvectors(fMultiplicity, iPhi, iWeights);
   ComputeAllTerms();
 
 // Reset the variables for the next event.
@@ -116,11 +156,15 @@ void AliAnalysisAnaTwoMultiCorrelations::UserExec(Option_t *)
   delete [] iPt;
   delete [] iEta;
   delete [] iPhi;
+  delete [] iWeights;
+  iEffCorr = 1.;
 }
 
 /* ------------------------------------------------------------------------- */
 void AliAnalysisAnaTwoMultiCorrelations::Terminate(Option_t *)
 {
+    delete fMainList;
+    fMainList = NULL;
 // All the additional steps after the loop over the events.
   //printf("AliAnalysisTaskHOCFA is done! \n");
 } // End: void Terminate(Option_t *).
@@ -224,10 +268,12 @@ void AliAnalysisAnaTwoMultiCorrelations::BookFinalResults()
 }
 
 // ------------------------------------------------------------------------- //
-void AliAnalysisAnaTwoMultiCorrelations::CalculateQvectors(Long64_t multiplicity, Double_t angles[])
+void AliAnalysisAnaTwoMultiCorrelations::CalculateQvectors(Long64_t multiplicity, Double_t angles[], Double_t pWeights[])
 {
 // Calculate the needed Q-vectors.
   Double_t iAngle = 0.; // Azimuthal angle of the current track.
+  Double_t iWeight = 0.;  // Particle weight of the current track.
+  Double_t iWeightToPowerP = 0.;  // Particle weight rised to the power p.
 
 // Ensure all the Q-vectors are initially zero.
   for (Int_t iHarmo = 0; iHarmo < 81; iHarmo++){
@@ -239,14 +285,19 @@ void AliAnalysisAnaTwoMultiCorrelations::CalculateQvectors(Long64_t multiplicity
 // Compute the Q-vectors.
   for (Long64_t iTrack = 0; iTrack < multiplicity; iTrack++){
     iAngle = angles[iTrack];
+    iWeight = pWeights[iTrack];
     for (Int_t iHarmo = 0; iHarmo < 81; iHarmo++){
       for (Int_t iPower = 0; iPower < 11; iPower++){
-        fQvectors[iHarmo][iPower] += TComplex(TMath::Cos(iHarmo*iAngle), TMath::Sin(iHarmo*iAngle));
+        iWeightToPowerP = TMath::Power(iWeight, iPower);
+        fQvectors[iHarmo][iPower] += TComplex(iWeightToPowerP*TMath::Cos(iHarmo*iAngle), iWeightToPowerP*TMath::Sin(iHarmo*iAngle));
       }
     }
   }
+
 // Reset the variables.
   iAngle = 0.;
+  iWeight = 0.;
+  iWeightToPowerP = 0.;
 }
 
 // ------------------------------------------------------------------------- //
@@ -297,136 +348,182 @@ TComplex AliAnalysisAnaTwoMultiCorrelations::CalculateRecursion(Int_t n, Int_t *
 // ------------------------------------------------------------------------- //
 void AliAnalysisAnaTwoMultiCorrelations::ComputeAllTerms()
 {
-// Compute all the terms needed for the ACs/SCs for all the observables.
-  int nPart = 2;        // We start with the case of 2-particle correlations.
-  int lHarmo[7] = {0};  // We work with "symmetric" correlators of max 14 particles > max 7 harmonics.
-  int lPower[2] = {0};  // Powers of {vm2,vn2} for the AC case.
+    // Validate centrality bin first
+    if (fCentralityBin < 0 || fCentralityBin >= 9) {
+        std::cerr << "CRITICAL: Invalid centrality bin: " << fCentralityBin << std::endl;
+        return;
+    }
 
-  // Fill the profile for the 2-p as it is common to all analysis cases.
-  for (int iBin = 0; iBin < 8; iBin++){
-    lHarmo[0] = iBin+1; // Only the first element needs to be filled in the 2-p case.
-    CalculateCorrelator(nPart, lHarmo, fCorrel2p[fCentralityBin], iBin, lPower);
-  }
+    // Validate first profile array
+    if (!fCorrel2p) {
+        std::cerr << "CRITICAL: fCorrel2p is null" << std::endl;
+        return;
+    }
+    if (!fCorrel2p[fCentralityBin]) {
+        std::cerr << "CRITICAL: fCorrel2p[" << fCentralityBin << "] is null" << std::endl;
+        return;
+    }
 
-  // Fill the 2-harmonic profile according to the analysis configuration.
-  // fNCombi = 1 (for SC, 13 combis in 1 profile), 7 (for lower AC) or 6 (for higher AC).
-  for (int iProf = 0; iProf < fNCombi; iProf++) {
-    for (int iBin = 0; iBin < 13; iBin++) {
-      // Define the number of particles and the harmonics for AC/SC individually.
-      if (fGetSC) {
-        nPart = 4;  // 2-h terms in SC are always 4-particle correlators.
-        lHarmo[0] = fHarmoArray2h[iBin][0];
-        lHarmo[1] = fHarmoArray2h[iBin][1];
-      } else {
-        nPart = 0;  // Reset the number of particles for this bin.
-        int cHarmo = 0; // Current index in the harmonic array.
-        for (int iHarmo = 0; iHarmo < 2; iHarmo++) {
-          if (fPowers[iBin][iHarmo] == 0) {continue;}   // Skip the unneeded harmonics.
-          lPower[iHarmo] = fPowers[iBin][iHarmo];   // We change the power element only if non-zero.
+    // Validate second profile array
+    if (!fCorrel2h) {
+        std::cerr << "CRITICAL: fCorrel2h is null" << std::endl;
+        return;
+    }
 
-          for (int jPower = 0; jPower < fPowers[iBin][iHarmo]; jPower++) {
-            lHarmo[cHarmo] = fHarmoArray2h[iProf][iHarmo];   // Write the harmo as many times as its power is.
-            cHarmo++;
-          }
+    int nPart = 2;
+    int lHarmo[7] = {0};
+    int lPower[2] = {0};
 
-          nPart += 2*fPowers[iBin][iHarmo]; // 2-h terms in AC have twice as many particles as their cumulant order.
-        } // Go to the next harmonic of the pair.
-      } // We have the harmonic array and the number of particles at this point.
+    // First loop validation
+    for (int iBin = 0; iBin < 8; iBin++) {
+        lHarmo[0] = iBin + 1;
+        if (!fCorrel2p[fCentralityBin]) {
+            std::cerr << "CRITICAL: Null profile at bin " << iBin << std::endl;
+            continue;
+        }
+        CalculateCorrelator(nPart, lHarmo, fCorrel2p[fCentralityBin], iBin, lPower);
+    }
 
-      // Calculate the multiparticle correlator itself using the recursion method.
-      CalculateCorrelator(nPart, lHarmo, fCorrel2h[iProf][fCentralityBin], iBin, lPower);
+    // Fill the 2-harmonic profile according to the analysis configuration.
+    // fNCombi = 1 (for SC, 13 combis in 1 profile), 7 (for lower AC) or 6 (for higher AC).
+    for (int iProf = 0; iProf < fNCombi; iProf++) {
+        for (int iBin = 0; iBin < 13; iBin++) {
+            if (fGetSC) {
+                nPart = 4;
+                lHarmo[0] = fHarmoArray2h[iBin][0];
+                lHarmo[1] = fHarmoArray2h[iBin][1];
+            } else {
+                nPart = 0;
+                int cHarmo = 0;
+                for (int iHarmo = 0; iHarmo < 2; iHarmo++) {
+                    if (fPowers[iBin][iHarmo] == 0) {continue;}
+                    lPower[iHarmo] = fPowers[iBin][iHarmo];
 
-      // Reset the variables for safety purposes.
-      lPower[0] = 0.; lPower[1] = 0.;
-    } // Go to the next bin in the current profile.
-  } // Go to the next profile in the array.
+                    for (int jPower = 0; jPower < fPowers[iBin][iHarmo]; jPower++) {
+                        lHarmo[cHarmo] = fHarmoArray2h[iProf][iHarmo];
+                        cHarmo++;
+                    }
 
-  // Fill the 3-harmonic profile only if the analysis is configured for SC.
-  if (fGetSC) {
-    nPart = 6;  // 3-h terms in SC are always 6-particle correlators.
-    for (int iBin = 0; iBin < 9; iBin++) {
-      // Define the harmonic array for this bin.
-      for (int iH = 0; iH < 3; iH++) {lHarmo[iH] = fHarmoArray3h[iBin][iH];}
+                    nPart += 2*fPowers[iBin][iHarmo];
+                }
+                
+                // Add validation
+                if (nPart <= 0) {
+                    std::cerr << "Warning: Invalid nPart=" << nPart 
+                              << " at iProf=" << iProf 
+                              << " iBin=" << iBin 
+                              << " Powers={" << fPowers[iBin][0] 
+                              << "," << fPowers[iBin][1] << "}" 
+                              << std::endl;
+                    continue;  // Skip this iteration
+                }
+            }
 
-      // Calculate the multiparticle correlator for this combination of harmonics.
-      CalculateCorrelator(nPart, lHarmo, fCorrel3h[fCentralityBin], iBin, lPower);
-    } // Go to the next combination of 3 harmonics.
-  }
+            // Validate profile pointer
+            if (!fCorrel2h[iProf] || !fCorrel2h[iProf][fCentralityBin]) {
+                std::cerr << "Error: Invalid profile pointer at iProf=" << iProf 
+                          << " fCentralityBin=" << fCentralityBin << std::endl;
+                continue;
+            }
 
+            CalculateCorrelator(nPart, lHarmo, fCorrel2h[iProf][fCentralityBin], iBin, lPower);
+            
+            lPower[0] = 0;
+            lPower[1] = 0;
+        }
+    }
+
+    // Fill the 3-harmonic profile only if the analysis is configured for SC.
+    if (fGetSC) {
+        nPart = 6;  // 3-h terms in SC are always 6-particle correlators.
+        for (int iBin = 0; iBin < 9; iBin++) {
+            // Define the harmonic array for this bin.
+            for (int iH = 0; iH < 3; iH++) {lHarmo[iH] = fHarmoArray3h[iBin][iH];}
+
+            // Calculate the multiparticle correlator for this combination of harmonics.
+            CalculateCorrelator(nPart, lHarmo, fCorrel3h[fCentralityBin], iBin, lPower);
+        } // Go to the next combination of 3 harmonics.
+    }
 }
 
 // ------------------------------------------------------------------------- //
 void AliAnalysisAnaTwoMultiCorrelations::CalculateCorrelator(int myMulti, int myHarmos[], TProfile *myProfile, int myBin, int myPowers[])
 {
-// Calculate the multiparticle correlator corresponding to harmonics[].
-  TComplex cCorrel = TComplex(0., 0.);
-  double eventWeight = 0.;  // Event weight for this correlator.
-  double rCorrel = 0.;      // Final value to fill in the profile.
-
-  int numer2h[2] = {myHarmos[0], -1*myHarmos[0]};
-  int denom2h[2] = {0};
-  int numer4h[4] = {myHarmos[0], myHarmos[1],
-                    -1*myHarmos[0], -1*myHarmos[1]};
-  int denom4h[4] = {0};
-  int numer6h[6] = {myHarmos[0], myHarmos[1], myHarmos[2],
-                    -1*myHarmos[0], -1*myHarmos[1], -1*myHarmos[2]};
-  int denom6h[6] = {0};
-  int numer8h[8] = {myHarmos[0], myHarmos[1], myHarmos[2], myHarmos[3],
-                    -1*myHarmos[0], -1*myHarmos[1], -1*myHarmos[2], -1*myHarmos[3]};
-  int denom8h[8] = {0};
-  int numer10h[10] = {myHarmos[0], myHarmos[1], myHarmos[2], myHarmos[3], myHarmos[4],
-                    -1*myHarmos[0], -1*myHarmos[1], -1*myHarmos[2], -1*myHarmos[3], -1*myHarmos[4]};
-  int denom10h[10] = {0};
-
-  // Compute the denominator (= event weight) and numerator with the provided harmonics.
-  switch(myMulti) {
-  case 2 :
-    eventWeight = ( CalculateRecursion(2, denom2h) ).Re();
-    cCorrel = ( CalculateRecursion(2, numer2h) )/eventWeight;
-    rCorrel = cCorrel.Re();
-    break;
-  case 4 :
-    eventWeight = ( CalculateRecursion(4, denom4h) ).Re();
-    cCorrel = ( CalculateRecursion(4, numer4h) )/eventWeight;
-    rCorrel = cCorrel.Re();
-    break;
-  case 6 :    
-    eventWeight = ( CalculateRecursion(6, denom6h) ).Re();
-    cCorrel = ( CalculateRecursion(6, numer6h) )/eventWeight;
-    rCorrel = cCorrel.Re();
-    break;
-  case 8 :
-    eventWeight = ( CalculateRecursion(8, denom8h) ).Re();
-    cCorrel = ( CalculateRecursion(8, numer8h) )/eventWeight;
-    rCorrel = cCorrel.Re();
-    break;
-  case 10 :
-    eventWeight = ( CalculateRecursion(10, denom10h) ).Re();
-    cCorrel = ( CalculateRecursion(10, numer10h) )/eventWeight;
-    rCorrel = cCorrel.Re();
-    break;
-  default :
-    printf("Error: invalid number of particles.\n");
-    break;
-  }
-
-  // Fill the corresponding bin in the right TProfile.
-  myProfile->Fill( (float)myBin + 0.5, rCorrel, eventWeight );
-
-  if (myMulti == 2) {   // Bins are filled with v1-v8.
-    myProfile->GetXaxis()->SetBinLabel(myBin+1, Form("v_{%d}", myBin+1));
-  } else if (fGetSC) {
-    if (myMulti == 4) {  // Bins are filled with 2-h combinations.
-      myProfile->GetXaxis()->SetBinLabel(myBin+1, Form("(%d,%d)", myHarmos[0], myHarmos[1]));
-    } else {
-      myProfile->GetXaxis()->SetBinLabel(myBin+1, Form("(%d,%d,%d)", myHarmos[0], myHarmos[1], myHarmos[2]));
+    // Minimal validation with critical errors only
+    if (myMulti <= 0 || myMulti > 10000) {
+        std::cerr << "CRITICAL: Invalid multiplicity: " << myMulti << std::endl;
+        return;
     }
-  } else {  // Bins are filled with the power patterns.
-    myProfile->GetXaxis()->SetBinLabel(myBin+1, Form("{%d,%d}", myPowers[0], myPowers[1]));
-  }
 
-/*// Reset the local variables for the next call.
-  cCorrel = TComplex(0., 0.);
-  rCorrel = 0.;
-  eventWeight = 0.;*/
+    if (!myProfile || (uintptr_t)myProfile < 0x1000) {
+        std::cerr << "CRITICAL: Invalid profile pointer: " << std::hex << (void*)myProfile << std::dec << std::endl;
+        return;
+    }
+
+    // Calculate the multiparticle correlator corresponding to harmonics[].
+    TComplex cCorrel = TComplex(0., 0.);
+    double eventWeight = 0.;  // Event weight for this correlator.
+    double rCorrel = 0.;      // Final value to fill in the profile.
+
+    int numer2h[2] = {myHarmos[0], -1*myHarmos[0]};
+    int denom2h[2] = {0};
+    int numer4h[4] = {myHarmos[0], myHarmos[1],
+                      -1*myHarmos[0], -1*myHarmos[1]};
+    int denom4h[4] = {0};
+    int numer6h[6] = {myHarmos[0], myHarmos[1], myHarmos[2],
+                      -1*myHarmos[0], -1*myHarmos[1], -1*myHarmos[2]};
+    int denom6h[6] = {0};
+    int numer8h[8] = {myHarmos[0], myHarmos[1], myHarmos[2], myHarmos[3],
+                      -1*myHarmos[0], -1*myHarmos[1], -1*myHarmos[2], -1*myHarmos[3]};
+    int denom8h[8] = {0};
+    int numer10h[10] = {myHarmos[0], myHarmos[1], myHarmos[2], myHarmos[3], myHarmos[4],
+                      -1*myHarmos[0], -1*myHarmos[1], -1*myHarmos[2], -1*myHarmos[3], -1*myHarmos[4]};
+    int denom10h[10] = {0};
+
+    // Compute the denominator (= event weight) and numerator with the provided harmonics.
+    switch(myMulti) {
+    case 2 :
+      eventWeight = ( CalculateRecursion(2, denom2h) ).Re();
+      cCorrel = ( CalculateRecursion(2, numer2h) )/eventWeight;
+      rCorrel = cCorrel.Re();
+      break;
+    case 4 :
+      eventWeight = ( CalculateRecursion(4, denom4h) ).Re();
+      cCorrel = ( CalculateRecursion(4, numer4h) )/eventWeight;
+      rCorrel = cCorrel.Re();
+      break;
+    case 6 :    
+      eventWeight = ( CalculateRecursion(6, denom6h) ).Re();
+      cCorrel = ( CalculateRecursion(6, numer6h) )/eventWeight;
+      rCorrel = cCorrel.Re();
+      break;
+    case 8 :
+      eventWeight = ( CalculateRecursion(8, denom8h) ).Re();
+      cCorrel = ( CalculateRecursion(8, numer8h) )/eventWeight;
+      rCorrel = cCorrel.Re();
+      break;
+    case 10 :
+      eventWeight = ( CalculateRecursion(10, denom10h) ).Re();
+      cCorrel = ( CalculateRecursion(10, numer10h) )/eventWeight;
+      rCorrel = cCorrel.Re();
+      break;
+    default :
+      printf("Error: invalid number of particles.\n");
+      break;
+    }
+
+    // Fill the corresponding bin in the right TProfile.
+    myProfile->Fill( (float)myBin + 0.5, rCorrel, eventWeight );
+
+    if (myMulti == 2) {   // Bins are filled with v1-v8.
+      myProfile->GetXaxis()->SetBinLabel(myBin+1, Form("v_{%d}", myBin+1));
+    } else if (fGetSC) {
+      if (myMulti == 4) {  // Bins are filled with 2-h combinations.
+        myProfile->GetXaxis()->SetBinLabel(myBin+1, Form("(%d,%d)", myHarmos[0], myHarmos[1]));
+      } else {
+        myProfile->GetXaxis()->SetBinLabel(myBin+1, Form("(%d,%d,%d)", myHarmos[0], myHarmos[1], myHarmos[2]));
+      }
+    } else {  // Bins are filled with the power patterns.
+      myProfile->GetXaxis()->SetBinLabel(myBin+1, Form("{%d,%d}", myPowers[0], myPowers[1]));
+    }
 }

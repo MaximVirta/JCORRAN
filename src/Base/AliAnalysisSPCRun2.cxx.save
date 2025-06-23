@@ -35,7 +35,7 @@ AliAnalysisSPCRun2::AliAnalysisSPCRun2():
   fcent_15(0.), fcent_16(0.),
   fCentralityBins(16), fMinNumberPart(14),
   bUseWeightsNUE(kTRUE), bUseWeightsNUA(kTRUE),
-  bComputeEtaGap(kFALSE), bUseJoinedCov(kFALSE), fEtaGap(0.8),
+  bComputeEtaGap(kFALSE), fEtaGap(0.8),
   bSaveAllQA(kTRUE),
   fCounterHistogram(NULL), fProfileTrackCuts(NULL)
 {
@@ -53,14 +53,14 @@ AliAnalysisSPCRun2::AliAnalysisSPCRun2(const char *name):
   fcent_5(0.), fcent_6(0.), fcent_7(0.), fcent_8(0.), fcent_9(0.),
   fcent_10(0.), fcent_11(0.), fcent_12(0.), fcent_13(0.), fcent_14(0.),
   fcent_15(0.), fcent_16(0.),
-  fCentralityBins(9), fMinNumberPart(14),
+  fCentralityBins(16), fMinNumberPart(14),
   bUseWeightsNUE(kFALSE), bUseWeightsNUA(kFALSE),
-  bComputeEtaGap(kFALSE), bUseJoinedCov(kFALSE), fEtaGap(0.8),
+  bComputeEtaGap(kFALSE), fEtaGap(0.8),
   bSaveAllQA(kTRUE),
   fCounterHistogram(NULL), fProfileTrackCuts(NULL)
 {
 // Constructor of the class.
-//  printf("AliAnalysisSPCRun2::AliAnalysisSPCRun2(const char *name)\n");
+  printf("AliAnalysisSPCRun2::AliAnalysisSPCRun2(const char *name)\n");
 
   // Define the base list.
   fHistList = new TList();
@@ -108,37 +108,14 @@ void AliAnalysisSPCRun2::UserCreateOutputObjects()
 }
 
 // ------------------------------------------------------------------------- //
-void AliAnalysisSPCRun2::WriteLists(char* name)
-{
-// Write the corresponding outputlists.
-  fHistList->Write(name,1);
-  delete fHistList;
-  fHistList = NULL;
-}
-
-// ------------------------------------------------------------------------- //
 void AliAnalysisSPCRun2::UserExec(Option_t *option)
 {
 // Execute the analysis for each provided event in the input sample.
-  // Add validation at the start
-  if (fCentrality < 0 || fCentrality > 80) {
-    std::cout << "SPC: Skipping event with centrality " << fCentrality << "%" << std::endl;
-    return;
-  }
-
-  // Use existing SelectCentrality function
-  Int_t centralityBin = SelectCentrality(fCentrality);
-  if (centralityBin < 0 || centralityBin >= 9) {
-    std::cerr << "SPC ERROR: Invalid centrality bin " << centralityBin 
-              << " for centrality " << fCentrality << "%" << std::endl;
-    return;
-  }
-
   // Fill the first bin of the counter histogram, to check if UserExec is entered properly.
   fCounterHistogram->Fill(0.5);
-  Bool_t bUseJoinedCov = kFALSE;
+
   // Get the class bin corresponding to the centrality of the current event.
-  //cout << fCentrality << endl;
+  Int_t centralityBin = SelectCentrality(fCentrality);
 
   // Start the analysis over the AODs.
   // 'DoMixed' and Fiser-Yates from the Run1 analysis task not included as not needed here.
@@ -202,7 +179,7 @@ void AliAnalysisSPCRun2::UserExec(Option_t *option)
   // Calculate the correlators needed for the SPC.
   MainTask(centralityBin, nTracks, angles, weights);
   if (bComputeEtaGap) {ComputeTPCWithEtaGaps(centralityBin, nTracks, angles, weights, eta);}
-  //fHistList->Write("HistoList",1);
+
   // Reset event-by-event objects.
   nTracks = 0;
   delete [] angles; 
@@ -225,9 +202,9 @@ void AliAnalysisSPCRun2::InitializeArrays()
 // Initialise the arrays present in the data members.
   // Q-vectors.
   cout << "Initialize arrays!" << endl;
-  for (Int_t js = 0; js < Nharm; js++) 
+  for (Int_t js = 0; js < 113; js++) 
   {
-    for (Int_t j = 0; j < Npart; j++) {fQvector[js][j] = TComplex(0.,0.);} 
+    for (Int_t j = 0; j < 15; j++) {fQvector[js][j] = TComplex(0.,0.);} 
   }
 
   // Harmonics combinations.
@@ -243,6 +220,7 @@ void AliAnalysisSPCRun2::InitializeArrays()
     fCentralityList[icent] = NULL;
     fControlHistogramsList[icent] = NULL;
     fFinalResultsList[icent] = NULL;
+    fTestProfile[icent] = NULL;
 
     // QC histograms.
     fCentralityHistogram[icent] = NULL;
@@ -268,8 +246,8 @@ void AliAnalysisSPCRun2::BookAndNestAllLists()
 // Book all the lists nested in the base list 'fHistList'.
   TString sMethodName = "void AliAnalysisSPCRun2::BookAndNestAllLists()";
   if (!fHistList) {Fatal(sMethodName.Data(),"fHistList is NULL");}
-  Float_t centralityArray[10] = {0., 5., 10., 20., 30., 40., 50., 60., 70., 80.};
-  for (Int_t icent = 0; icent < 9; icent++)
+
+  for (Int_t icent = 0; icent < fCentralityBins; icent++)
   {
     // Check if the value of this centrality bin is negative. If yes: break.
     if (fCentralityArray[icent+1] < 0) {
@@ -278,15 +256,20 @@ void AliAnalysisSPCRun2::BookAndNestAllLists()
 
     fCentralityList[icent] = new TList();
     fCentralityList[icent]->SetName(Form("MultCut_task=>%.1f-%.1f",
-      centralityArray[icent],centralityArray[icent+1]));
+      fCentralityArray[icent],fCentralityArray[icent+1]));
     fCentralityList[icent]->SetOwner(kTRUE);
     fHistList->Add(fCentralityList[icent]);
+    
+    fTestProfile[icent] = new TProfile();
+    fTestProfile[icent]->SetName(Form("Test_bin_%d", icent));
+    fTestProfile[icent]->SetTitle(Form("TestBin%d",icent));
+    fHistList->Add(fTestProfile[icent]);
 
     fControlHistogramsList[icent] = new TList();
     fControlHistogramsList[icent]->SetName("ControlHistograms");
     fControlHistogramsList[icent]->SetOwner(kTRUE);
     if (bSaveAllQA) {fCentralityList[icent]->Add(fControlHistogramsList[icent]);}
-    // cout << icent << "\tShould book lists" << endl;
+    cout << icent << "\tShould book lists" << endl;
     fFinalResultsList[icent] = new TList();
     fFinalResultsList[icent]->SetName("FinalResults");
     fFinalResultsList[icent]->SetOwner(kTRUE);
@@ -305,41 +288,41 @@ void AliAnalysisSPCRun2::BookControlHistograms()
   if (fCentralityArray[icent+1] < 0) {break;}
 
   // Transverse momentum spectrum.
-  fPTHistogram[icent] = new TH1F(Form("fPTHistAfterTrackSelection_%02d", icent),"Pt Distribution", 1000, 0., 10.);
+  fPTHistogram[icent] = new TH1F("fPTHistAfterTrackSelection","Pt Distribution", 1000, 0., 10.);
   fPTHistogram[icent]->GetXaxis()->SetTitle("P_t");
   fPTHistogram[icent]->SetLineColor(4);
   fControlHistogramsList[icent]->Add(fPTHistogram[icent]); 
    
   // Azimuthal angle spectrum.
-  fPhiHistogram[icent] = new TH1F(Form("fPhiHistAfterTrackSelection_%02d", icent),"Phi Distribution",
+  fPhiHistogram[icent] = new TH1F("fPhiHistAfterTrackSelection","Phi Distribution",
     1000, -TMath::Pi(), TMath::Pi());
   fPhiHistogram[icent]->GetXaxis()->SetTitle("Phi");
   fPhiHistogram[icent]->SetLineColor(4);
   fControlHistogramsList[icent]->Add(fPhiHistogram[icent]);
 
-  fPhiWeightProfile[icent] = new TProfile(Form("fPhiWeightProfile_%02d", icent),"Phi Weights",
+  fPhiWeightProfile[icent] = new TProfile("fPhiWeightProfile","Phi Weights",
     100, -TMath::Pi(), TMath::Pi());
   fPhiWeightProfile[icent]->GetXaxis()->SetTitle("#varphi");
   fPhiWeightProfile[icent]->GetYaxis()->SetTitle("weight");
   fControlHistogramsList[icent]->Add(fPhiWeightProfile[icent]);
 
   // Pseudorapidity spectrum.
-  fEtaHistogram[icent] = new TH1F(Form("fEtaHistAfterTrackSelection_%02d", icent),"Eta Distribution", 1000,-1.,1.);
+  fEtaHistogram[icent] = new TH1F("fEtaHistAfterTrackSelection","Eta Distribution", 1000,-1.,1.);
   fEtaHistogram[icent]->GetXaxis()->SetTitle("Eta");
   fEtaHistogram[icent]->SetLineColor(4);
   fControlHistogramsList[icent]->Add(fEtaHistogram[icent]);
 
   // Multiplicity spectrum.
-  fMultHistogram[icent] = new TH1F(Form("fMultiHistoAfterTrackSelection_%02d", icent),"Multiplicity", 30000,0.,30000.);
+  fMultHistogram[icent] = new TH1F("fMultiHistoAfterTrackSelection","Multiplicity", 30000,0.,30000.);
   fMultHistogram[icent]->GetXaxis()->SetTitle("Multiplicity M");
   fControlHistogramsList[icent]->Add(fMultHistogram[icent]);
 
   // Electric charge spectrum.
-  fChargeHistogram[icent] = new TH1I(Form("ChargeAfterCut_%02d", icent),"ChargeAfterCut",11, -5.5, 5.5); 
+  fChargeHistogram[icent] = new TH1I("ChargeAfterCut","ChargeAfterCut",11, -5.5, 5.5); 
   fControlHistogramsList[icent]->Add(fChargeHistogram[icent]); 
 
   // Centrality distribution.
-  fCentralityHistogram[icent]= new TH1F(Form("fCentralityHistogramAfter_%02d", icent),"CentralityHistogramAfter",
+  fCentralityHistogram[icent]= new TH1F("fCentralityHistogramAfter","CentralityHistogramAfter",
     22, 0., 110.);
   fCentralityHistogram[icent]->GetXaxis()->SetTitle("Centrality");
   fCentralityHistogram[icent]->SetLineColor(4);
@@ -351,44 +334,42 @@ void AliAnalysisSPCRun2::BookControlHistograms()
 // ------------------------------------------------------------------------- //
 void AliAnalysisSPCRun2::BookFinalResultsHistograms()
 {
-  TProfile::AddDirectory(kFALSE);
 // Book all histograms to hold the final results.
   for (Int_t icent = 0; icent < 9; icent++)
   {
     // Check if the value of this centrality bin is negative. If yes: break.
     if (fCentralityArray[icent+1] < 0) {break;}
     Float_t centralityArray[10] = {0., 5., 10., 20., 30., 40., 50., 60., 70., 80.};
-
-    fResults[icent] = new TProfile(Form("fResults_%02d", icent), "Numerators and denominators for SPC",
+    fResults[icent] = new TProfile(Form("fResults_%.1f-%.1f", fCentralityArray[icent],fCentralityArray[icent+1]), "Numerators and denominators for SPC",
       24, 0., 24.,"s");
     fResults[icent]->GetXaxis()->SetTitle("");
     fResults[icent]->GetYaxis()->SetTitle("");
     fResults[icent]->Sumw2();
     fFinalResultsList[icent]->Add(fResults[icent]);
 
-    fResultsAlternativeError[icent] = new TProfile(Form("fResultsAlternativeError_%02d", icent),
+    fResultsAlternativeError[icent] = new TProfile("fResultsAlternativeError",
       "Numerators and denominators for SPC (not 's' option)", 24, 0.,24.);
     fResultsAlternativeError[icent]->GetXaxis()->SetTitle("");
     fResultsAlternativeError[icent]->GetYaxis()->SetTitle("");
     fResultsAlternativeError[icent]->Sumw2();
     fFinalResultsList[icent]->Add(fResultsAlternativeError[icent]);
 
-    fCovResults[icent] = new TProfile(Form("fCovResults_%02d", icent),
+    fCovResults[icent] = new TProfile("fCovResults",
       "Results for the covariance terms", 48, 0.,48., "s");
     fCovResults[icent]->GetXaxis()->SetTitle("");
     fCovResults[icent]->GetYaxis()->SetTitle("");
     fCovResults[icent]->Sumw2();
     fFinalResultsList[icent]->Add(fCovResults[icent]); 
 
-    fJoinedCovResults[icent] = new TProfile(Form("fJoinedCovResults_%02d", icent),
+    fJoinedCovResults[icent] = new TProfile("fJoinedCovResults",
       "Joined Covariance calculated as one correlator <z> and not as <x*y>", 24, 0., 24.);
     fJoinedCovResults[icent]->GetXaxis()->SetTitle("");
     fJoinedCovResults[icent]->GetYaxis()->SetTitle("");
     fJoinedCovResults[icent]->Sumw2();
     fFinalResultsList[icent]->Add(fJoinedCovResults[icent]);
 
-    fProfileTPCEta[icent] = new TProfile(Form("fProfileTPCEta_%02d", icent),"2-particle correlators with eta gap",
-      9, 0., 9.,"s");
+    fProfileTPCEta[icent] = new TProfile("fProfileTPCEta","2-particle correlators with eta gap",
+      9, 0., 9.,"s"); 
     fProfileTPCEta[icent]->GetXaxis()->SetTitle("");
     fProfileTPCEta[icent]->GetYaxis()->SetTitle("");
     fProfileTPCEta[icent]->Sumw2();
@@ -416,9 +397,9 @@ void AliAnalysisSPCRun2::CalculateQvectors(Int_t c_nParticles,
 {
 // Calculate Q-vectors. 
   // Ensure first that all Q-vectors are initially zero.
-  for (Int_t h = 0; h < Nharm; h++)
+  for (Int_t h = 0; h < 113; h++)
   {
-    for (Int_t p = 0; p < Npart; p++) {fQvector[h][p] = TComplex(0.,0.);}
+    for (Int_t p = 0; p < 15; p++) {fQvector[h][p] = TComplex(0.,0.);}
   } // Go to the next harmonic.
 
   // Calculate the Q-vectors for the given angles and weights. 
@@ -430,9 +411,9 @@ void AliAnalysisSPCRun2::CalculateQvectors(Int_t c_nParticles,
   {
     dPhi2 = c_angles[i];
     if (bUseWeightsNUE || bUseWeightsNUA) {wPhi = c_weights[i];}
-    for (Int_t h = 0; h < Nharm; h++)
+    for (Int_t h = 0; h < 113; h++)
     {
-      for (Int_t p = 0; p < Npart; p++)
+      for (Int_t p = 0; p < 15; p++)
       {
         if (bUseWeightsNUE || bUseWeightsNUA) {wPhiToPowerP = pow(wPhi,p);}
         fQvector[h][p] += TComplex(wPhiToPowerP*TMath::Cos(h*dPhi2),
@@ -491,11 +472,10 @@ TComplex AliAnalysisSPCRun2::Recursion(Int_t n, Int_t* harmonic, Int_t mult = 1,
 Int_t AliAnalysisSPCRun2::SelectCentrality(Double_t centValue)
 {
 // Get the centrality bin corresponding to the given centrality value.
-  Float_t centralityArray[10] = {0., 5., 10., 20., 30., 40., 50., 60., 70., 80.};
-  for (Int_t iCent = 0; iCent < 10; iCent++)
+  for (Int_t iCent = 0; iCent < fCentralityBins+1; iCent++)
   {
-    if (centralityArray[iCent] < 0) {return -1;}
-    if (centValue >= centralityArray[iCent]) {continue;} 
+    if (fCentralityArray[iCent] < 0) {return -1;}
+    if (centValue >= fCentralityArray[iCent]) {continue;} 
     else {return iCent-1;} 
   } 
 
@@ -582,9 +562,9 @@ void AliAnalysisSPCRun2::MainTask(Int_t centBin, Int_t mult,
 
       // Calculate the joined product of num*den as one single term.
       // Works only if the order of the correlator is <= 4
-      if (fHarmosArray[j][0] <= 4 && bUseJoinedCov) {
+      if (fHarmosArray[j][0] <= 4) {
         if (fDebugLevel > 5) {printf("Calculating joined term.\n");}
-	Int_t nPartJoinedCov = 3*fHarmosArray[j][0];
+        Int_t nPartJoinedCov = 3*fHarmosArray[j][0];
         Int_t hArrayJoinedCov[12] = {0};
         for (int o = 0; o < 4; o++) {hArrayJoinedCov[o] = fHarmosArray[j][o+1];}
         hArrayJoinedCov[4] = fHarmosArray[j][1];
@@ -848,27 +828,6 @@ void AliAnalysisSPCRun2::ComputeTPCWithEtaGaps(Int_t centBin, Int_t mult, Double
 }
 void AliAnalysisSPCRun2::SetSPC(Int_t spcNr) {
   switch(spcNr){
-    case 0:{
-      Int_t harmonicArray0[12][8] = {
-                                          {3, 4,-2,-2, 0, 0, 0, 0},
-                                          {5, 3, 3,-2,-2,-2, 0, 0},
-                                          {3, 2, 3,-5, 0, 0, 0,0},
-                                          {4, 2,-3,-3, 4, 0, 0,0},
-                                          {4, 2,-3,-4, 5, 0, 0,0},
-                                          {3, 2, 4,-6, 0, 0, 0,0},
-                                          {0, 2, 2, 2, 2, -4, -4, 0},
-                                          {0, 4, 4, 4, -3, -3, -3, -3},  // Too heavy for the moment.
-                                          {0, 5, 5, -2, -2, -2, -2, -2}, // Too heavy for the moment.
-                                          {0, 3, 3, 3, 3, -4, -4,-4}, // Too heavy for the moment.
-                                          {0, 0, 0,0, 0, 0, 0,0},
-                                          {0, 0, 0,0, 0, 0, 0,0}
-                                        };
-
-        for (int k = 0; k<12; k++){
-          SetCorrSet(k,harmonicArray0[k]);
-        }
-		break;
-    }
     case 1:{
       Int_t harmonicArray1[12][8] = {
                                           {4, 6,-2,-2,-2, 0, 0, 0},
@@ -888,7 +847,7 @@ void AliAnalysisSPCRun2::SetSPC(Int_t spcNr) {
         for (int k = 0; k<12; k++){
           SetCorrSet(k,harmonicArray1[k]);
         }
-    break;
+		break;
     }
     case 2:{
       Int_t harmonicArray2[12][8] = {
@@ -913,9 +872,31 @@ void AliAnalysisSPCRun2::SetSPC(Int_t spcNr) {
         }
 		break;
     }
-
     case 3:{
-      Int_t harmonicArray3[12][8] = {
+      Int_t harmonicArray2[12][8] = {
+                                          {4, 3,-4,-4, 5, 0, 0,0},
+                                          {3, 2, 4,-6, 0, 0, 0,0},
+                                          {3, 2, 3,-5, 0, 0, 0,0},
+                                          {4, 2,-3,-3, 4, 0, 0,0},
+                                          {5, 2, 3, 3,-4,-4, 0,0},
+                                          {6, 2, 2, 2, 2,-3,-5,0},
+                                          {5, 3, 3, 3,-4,-5, 0,0},
+                                          {4, 2, 2, 3, -7, 0, 0,0},
+                                          {3, 3, 4, -7, 0, 0, 0,0},
+                                          {3, 2, 5, -7, 0, 0, 0,0},
+                                          {3, 3, 5, -8, 0, 0, 0,0},
+                                          {4, 2, 2, 4, -8, 0, 0,0}
+                                          // {0, 2, 2, 2, 2, 2, -4,-6} // Too heavy for the moment.
+                                        };
+
+
+        for (int k = 0; k<12; k++){
+          SetCorrSet(k,harmonicArray2[k]);
+        }
+		break;
+    }
+    case 4:{
+      Int_t harmonicArray3[12][8] = {       
                                           {4, 2,-3,-4, 5, 0, 0,0}, 
                                           {6, 2, 2, 2, 3,-4,-5,0}, 
                                           {5, 2, 2,-3, 4,-5, 0,0},
@@ -936,7 +917,7 @@ void AliAnalysisSPCRun2::SetSPC(Int_t spcNr) {
         }
 		break;
     }
-    case 4:{
+    case 5:{
       Int_t harmonicArray4[12][8] = {
                                           {5, 2, 3, -4, 5, -6, 0,0},
                                           {6, 2, 3, 4, 4, -6, -7,0},

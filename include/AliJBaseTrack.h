@@ -26,7 +26,7 @@
 #include <iostream>
 #include <TLorentzVector.h>
 #include <TMath.h>
-//#include  "AliJConst.h"
+#include  "AliJConst.h"
 
 using namespace std;
 
@@ -40,7 +40,7 @@ class AliJBaseTrack : public TLorentzVector {
         virtual ~AliJBaseTrack(){;}    //destructor
 
         double EtaAbs(){ return TMath::Abs(Eta()); }
-        float   GetTwoPiPhi() const {return Phi()>-TMath::Pi()/3 ? Phi() : TMath::TwoPi()+Phi();} 
+        float   GetTwoPiPhi() const {return Phi()>-kJPi/3 ? Phi() : kJTwoPi+Phi();} 
         TLorentzVector GetLorentzVector(){ return TLorentzVector(Px(), Py(), Pz(), E());}
 
         Int_t         GetID()           const { return fID;}
