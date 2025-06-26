@@ -116,7 +116,7 @@ class AliAnalysisPtVn {
   TComplex aab = abcdvec[2][1][0][0];
   TComplex abb = abcdvec[1][2][0][0];
   TComplex aabb = abcdvec[2][2][0][0];
-    return (a*a*b*b - aa*b*b - a*a*bb - 4*a*ab*b + aa*bb + 2*ab*ab  + 4*aab*b + 4*a*abb - 6*aabb).Re(); }
+    return (a*a*b*b - aa*b*b - a*a*bb - 4.*a*ab*b + aa*bb + 2.*ab*ab  + 4.*aab*b + 4.*a*abb - 6.*aabb).Re(); }
   double getStdABCC(TComplex abcdvec[3][3][3][3]){
     TComplex a = abcdvec[1][0][0][0];
     TComplex b = abcdvec[0][1][0][0];
