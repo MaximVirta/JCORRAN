@@ -139,7 +139,7 @@ void AliAnalysisSPCRun2::UserExec(Option_t *option)
   Bool_t bUseJoinedCov = kFALSE;
   // Get the class bin corresponding to the centrality of the current event.
   //cout << fCentrality << endl;
-
+  if (centralityBin < 0) return;
   // Start the analysis over the AODs.
   // 'DoMixed' and Fiser-Yates from the Run1 analysis task not included as not needed here.
 
@@ -163,13 +163,12 @@ void AliAnalysisSPCRun2::UserExec(Option_t *option)
     Double_t iWeight = 1.;  // Default value: unit particle weight.
 
     // Parse the selected track and get their information into the arrays.
-    AliJBaseTrack *aTrack = (AliJBaseTrack*)fInputList->At(iTrack);
+    AliJBaseTrack *aTrack = dynamic_cast<AliJBaseTrack*>(fInputList->At(iTrack));
     if (!aTrack) {continue;}
 
     iPhi = aTrack->Phi();
     iPt = aTrack->Pt();
     iEta = aTrack->Eta();
-    iCharge = aTrack->GetCharge();
 
     Double_t iEffCorr = 1.;
     Double_t iEffInverse = 1.;
@@ -187,6 +186,7 @@ void AliAnalysisSPCRun2::UserExec(Option_t *option)
     pt[iTrack] = iPt; 
     eta[iTrack] = iEta; 
     weights[iTrack] = iWeight;
+    angles[iTrack] = iPhi;
 
     // Fill the track QA if needed.
     if (bSaveAllQA) {
@@ -205,10 +205,14 @@ void AliAnalysisSPCRun2::UserExec(Option_t *option)
   //fHistList->Write("HistoList",1);
   // Reset event-by-event objects.
   nTracks = 0;
+<<<<<<< HEAD
   delete [] angles; 
   delete [] pt;
   delete [] eta;
   delete [] weights;
+=======
+  delete [] angles;
+>>>>>>> 97bb73c (SPC fix)
 }
 
 // ------------------------------------------------------------------------- //
