@@ -22,7 +22,7 @@ using std::endl;
 
 #define Fatal(d, s) printf("***  FATAL: %s: %s\n",d,s)
 
-//ClassImp(AliAnalysisSPCRun2)
+ClassImp(AliAnalysisSPCRun2)
 
 // ------------------------------------------------------------------------- //
 AliAnalysisSPCRun2::AliAnalysisSPCRun2():

@@ -1,13 +1,18 @@
 #!/bin/bash
 CURDIR=$PWD
+mkdir -p $( jcorran-config-path )/lib
+rm -f $( jcorran-config-path )/lib/*
+cd $( jcorran-config-path )/include
+echo "Generating ROOT dictionary for the JCORRAN..."
+rootcling -f $( jcorran-config-path )/src/Base/jcorranDict.cxx *.h -s $( jcorran-config-path )/lib/JCORRANdict -rml $( jcorran-config-path )/lib/libJCORRANdict.so -rmf $( jcorran-config-path )/lib/libJCORRANdict.rootmap
 cd $( jcorran-config-path )/src/Base
-rm -f *.o jcorranDict*
-rm ../../include/jcorranDict*
-echo "Creating root dictonary file..."
-rootcling jcorranDict.cxx ../../include/*.h -s ../../include/jcorranDict
+rm -f *.o
 echo "Creating JCORRAN lib to $( jcorran-config-path )/lib"
 # Create the lib directory if it doesn't exist
-mkdir -p ../../lib
-g++ -c *.cxx $( root-config --cflags ) -I../../include
-ar rcs ../../lib/libJCORRANbase.a *.o && echo "JCorran library created succesfully!"
+echo "Compiling objects..."
+g++ -c *.cxx $( root-config --cflags ) -I$( jcorran-config-path )/include -fPIC
+echo "Creating a shared library for ROOT..."
+g++ -fPIC --shared `root-config --cflags --libs` `jcorran-config-inc` -o $( jcorran-config-path )/lib/libJCORRANdict.so *.cxx
+# echo "Creating static library..."
+# ar rcs $( jcorran-config-path )/lib/libJCORRANbase.a *.o && echo "JCorran library created succesfully!"
 cd $CURDIR
