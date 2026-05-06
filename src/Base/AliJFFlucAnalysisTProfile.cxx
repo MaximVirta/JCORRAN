@@ -1,3 +1,4 @@
+#include <cmath>
 #include <TH1D.h>
 #include <TH2D.h>
 #include <TH3D.h>
@@ -8,6 +9,10 @@
 #include "AliJBaseTrack.h"
 #include "AliJFFlucAnalysisTProfile.h"
 #pragma GCC diagnostic warning "-Wall"
+
+namespace {
+inline bool IsFinite(double x) { return std::isfinite(x); }
+}
 
 //ClassImp(AliJFFlucAnalysisTProfile)
 
@@ -100,11 +105,13 @@ AliJFFlucAnalysisTProfile::AliJFFlucAnalysisTProfile(const char *name) :
 }
 
 Double_t AliJFFlucAnalysisTProfile::CentBin_PbPb_default[][2] = {{0,1},{1,2},{2,5},{5,10},{10,20},{20,30},{30,40},{40,50},{50,60}};
+Double_t AliJFFlucAnalysisTProfile::CentBin_OO_central[][2] = {{0,1},{1,2},{2,5},{5,10},{10,15},{15,20},{20,25},{25,30},{30,35},{35,40},{40,45},{45,50}};
 Double_t AliJFFlucAnalysisTProfile::MultBin_PbPb_1[][2] = {{25.245,25.611},{31.555,31.982},{37.898,38.387},{44.251,44.803},{50.584,51.198},{56.942,57.62},{66.341,67.113},{79.03,79.93},{91.764,92.792},{104.431,105.587},{117.103,118.387},{136.063,137.541},{161.3,163.033},{186.707,188.698},{212.126,214.374},{281.085,284.042},{344.727,348.332},{408.197,412.447},{471.798,476.696},{535.041,540.583},{598.475,604.663},{662.018,668.854},{725.484,732.967},{788.636,796.763},{852.345,861.121},{915.632,925.054},{979.134,989.204},{1042.376,1053.091},{1105.751,1117.114},{1169.205,1181.215},{1232.423,1245.079},{1295.89,1309.194},{1359.578,1373.533},{1422.675,1437.274},{1485.99,1501.236},{1549.608,1565.503},{1612.809,1629.351},{1676.158,1693.347},{1739.647,1757.486},{1802.865,1821.351},{1866.328,1885.462},{1929.777,1949.561},{1993.119,2013.553},{2056.422,2077.504},{2119.716,2141.448},{2182.935,2205.317},{2246.261,2269.296},{2309.523,2333.209},{2373.038,2397.381},{2436.146,2461.145},{2499.398,2525.057},{2563.07,2589.39},{2626.482,2653.462},{2689.435,2717.075},{2753.073,2781.382},{2815.911,2844.889},{2879.821,2909.486},{2943.2,2973.535},{3006.237,3037.292},{3068.718,3100.47},{3132.669,3165.259}};
 Double_t AliJFFlucAnalysisTProfile::MultBin_pPb_1[][2] = {{30.651,31.125},{42.627,43.263},{54.598,55.399},{66.613,67.581},{78.665,79.802},{90.789,92.098},{102.805,104.286},{114.903,116.569}};
-Double_t (*AliJFFlucAnalysisTProfile::pBin[3])[2] = {&CentBin_PbPb_default[0],&MultBin_PbPb_1[0],&MultBin_pPb_1[0]};
-UInt_t AliJFFlucAnalysisTProfile::NBin[3] = {
+Double_t (*AliJFFlucAnalysisTProfile::pBin[4])[2] = {&CentBin_PbPb_default[0],&CentBin_OO_central[0],&MultBin_PbPb_1[0],&MultBin_pPb_1[0]};
+UInt_t AliJFFlucAnalysisTProfile::NBin[4] = {
 	sizeof(AliJFFlucAnalysisTProfile::CentBin_PbPb_default)/sizeof(AliJFFlucAnalysisTProfile::CentBin_PbPb_default[0]),
+	sizeof(AliJFFlucAnalysisTProfile::CentBin_OO_central)/sizeof(AliJFFlucAnalysisTProfile::CentBin_OO_central[0]),
 	sizeof(AliJFFlucAnalysisTProfile::MultBin_PbPb_1)/sizeof(AliJFFlucAnalysisTProfile::MultBin_PbPb_1[0]),
 	sizeof(AliJFFlucAnalysisTProfile::MultBin_pPb_1)/sizeof(AliJFFlucAnalysisTProfile::MultBin_pPb_1[0])
 };
@@ -163,7 +170,7 @@ void AliJFFlucAnalysisTProfile::UserCreateOutputObjects(const std::string manage
 	fBin_kk .Set("KK","KK","KK:%d", AliJBin::kSingle).SetBin(nKL);
 
 	//TODO: index with binning the array of pointers
-	if(binning != BINNING_CENT_PbPb)
+	if(binning != BINNING_CENT_PbPb && binning != BINNING_CENT_OO)
 		fHistCentBin.Set("MultBin","MultBin","Cent:%d",AliJBin::kSingle).SetBin(NBin[binning]);
 	else fHistCentBin.Set("CentBin","CentBin","Cent:%d",AliJBin::kSingle).SetBin(NBin[binning]);
 
@@ -331,6 +338,10 @@ void AliJFFlucAnalysisTProfile::UserCreateOutputObjects(const std::string manage
 		<< fBin_h
 		<< fHistCentBin
 		<< "END" ;
+	fh_SC_with_QC_2corr_eta14
+		<< TProfile("hQC_SC2p_eta14", "hQC_SC2p_eta14", kNH, 0., static_cast<float>(kNH))
+		<< fHistCentBin
+		<< "END" ;
 	fh_evt_SP_QC_ratio_4p
 		<< TH1D("hSPQCratio4p", "hSPQCratio4p", 1024, -100, 100)
 		<< fBin_h
@@ -384,7 +395,7 @@ inline TComplex SixGap33(const TComplex (*pQq)[AliJFFlucAnalysisTProfile::kNH][A
 void AliJFFlucAnalysisTProfile::UserExec(Option_t *) {
 	// find Centrality
 	int trk_number = fInputList->GetEntriesFast();
-	fCBin = (binning != BINNING_CENT_PbPb)?
+	fCBin = (binning != BINNING_CENT_PbPb && binning != BINNING_CENT_OO)?
 		GetBin((double)trk_number,binning):
 		GetBin(fCent,binning); //--- similarly in Task
 
@@ -487,12 +498,16 @@ void AliJFFlucAnalysisTProfile::UserExec(Option_t *) {
 		for(int ih=2; ih<kNH; ih++){
 			for(int ik=1; ik<nKL; ik++){ // 2k(0) =1, 2k(1) =2, 2k(2)=4....
 				vn2[ih][ik] = corr[ih][ik].Re()/ref_2Np[ik-1];
-				fh_vn[ik][fCBin]->Fill(static_cast<float>(ih) + 0.5, vn2[ih][ik],ebe_2Np_weight[ik-1]);
-				fh_vna[ik][fCBin]->Fill(static_cast<float>(ih) + 0.5, ncorr[ih][ik].Re()/ref_2Np[ik-1],ebe_2Np_weight[ik-1]);
+				if(IsFinite(vn2[ih][ik]) && IsFinite(ebe_2Np_weight[ik-1]))
+					fh_vn[ik][fCBin]->Fill(static_cast<float>(ih) + 0.5, vn2[ih][ik],ebe_2Np_weight[ik-1]);
+				Double_t vna_val = ncorr[ih][ik].Re()/ref_2Np[ik-1];
+				if(IsFinite(vna_val) && IsFinite(ebe_2Np_weight[ik-1]))
+					fh_vna[ik][fCBin]->Fill(static_cast<float>(ih) + 0.5, vna_val,ebe_2Np_weight[ik-1]);
 				for(int ihh=2; ihh<kcNH; ihh++){
 					for(int ikk=1; ikk<nKL; ikk++){
 						vn2_vn2[ih][ik][ihh][ikk] = ncorr2[ih][ik][ihh][ikk]/ref_2Np[ik+ikk-1];//(ncorr[ih][ik]*ncorr[ihh][ikk]).Re()/ref_2Np[ik+ikk-1];
-						fh_vn_vn[ik][ihh][ikk][fCBin]->Fill(static_cast<float>(ih) + 0.5, vn2_vn2[ih][ik][ihh][ikk],ebe_2Np_weight[ik+ikk-1]); // Fill hvn_vn
+						if(IsFinite(vn2_vn2[ih][ik][ihh][ikk]) && IsFinite(ebe_2Np_weight[ik+ikk-1]))
+							fh_vn_vn[ik][ihh][ikk][fCBin]->Fill(static_cast<float>(ih) + 0.5, vn2_vn2[ih][ik][ihh][ikk],ebe_2Np_weight[ik+ikk-1]); // Fill hvn_vn
 					}
 				}
 			}
@@ -540,50 +555,52 @@ void AliJFFlucAnalysisTProfile::UserExec(Option_t *) {
 		TComplex nV4V4V3V3 = FourGap22(pQq,i,4,3,4,3)/ref_4p;//(pQn[i][0][4]*pQn[i][1][4]*pQn[i][0][3]*pQn[i][1][3]) - ((1/(N[i][1]-1) * pQn[i][1][7] * pQn[i][0][4] *pQn[i][0][3] ))
 			//- ((1/(N[i][0]-1) * pQn[i][0][7]*pQn[i][1][4] * pQn[i][1][3])) + (1/((N[i][0]-1)*(N[i][1]-1))*pQn[i][0][7]*pQn[i][1][7] );
 
-		fh_correlator[fCBin]->Fill(0.5, V4V2starv2_2.Re() );
-		fh_correlator[fCBin]->Fill(1.5, V4V2starv2_4.Re() );
-		fh_correlator[fCBin]->Fill(2.5, V4V2star_2.Re(),ebe_3p_weight ) ; // added 2015.3.18
-		fh_correlator[fCBin]->Fill(3.5, V5V2starV3starv2_2.Re() );
-		fh_correlator[fCBin]->Fill(4.5, V5V2starV3star.Re(),ebe_3p_weight );
-		fh_correlator[fCBin]->Fill(5.5, V5V2starV3startv3_2.Re() );
-		fh_correlator[fCBin]->Fill(6.5, V6V2star_3.Re(),ebe_4p_weightB );
-		fh_correlator[fCBin]->Fill(7.5, V6V3star_2.Re(),ebe_3p_weight );
-		fh_correlator[fCBin]->Fill(8.5, V7V2star_2V3star.Re(),ebe_4p_weightB ) ;
+		if(IsFinite(V4V2starv2_2.Re())) fh_correlator[fCBin]->Fill(0.5, V4V2starv2_2.Re() );
+		if(IsFinite(V4V2starv2_4.Re())) fh_correlator[fCBin]->Fill(1.5, V4V2starv2_4.Re() );
+		if(IsFinite(V4V2star_2.Re()) && IsFinite(ebe_3p_weight)) fh_correlator[fCBin]->Fill(2.5, V4V2star_2.Re(),ebe_3p_weight ) ; // added 2015.3.18
+		if(IsFinite(V5V2starV3starv2_2.Re())) fh_correlator[fCBin]->Fill(3.5, V5V2starV3starv2_2.Re() );
+		if(IsFinite(V5V2starV3star.Re()) && IsFinite(ebe_3p_weight)) fh_correlator[fCBin]->Fill(4.5, V5V2starV3star.Re(),ebe_3p_weight );
+		if(IsFinite(V5V2starV3startv3_2.Re())) fh_correlator[fCBin]->Fill(5.5, V5V2starV3startv3_2.Re() );
+		if(IsFinite(V6V2star_3.Re()) && IsFinite(ebe_4p_weightB)) fh_correlator[fCBin]->Fill(6.5, V6V2star_3.Re(),ebe_4p_weightB );
+		if(IsFinite(V6V3star_2.Re()) && IsFinite(ebe_3p_weight)) fh_correlator[fCBin]->Fill(7.5, V6V3star_2.Re(),ebe_3p_weight );
+		if(IsFinite(V7V2star_2V3star.Re()) && IsFinite(ebe_4p_weightB)) fh_correlator[fCBin]->Fill(8.5, V7V2star_2V3star.Re(),ebe_4p_weightB ) ;
 
-		fh_correlator[fCBin]->Fill(9.5, nV4V2star_2.Re(),ebe_3p_weight ); // added 2015.6.10
-		fh_correlator[fCBin]->Fill(10.5, nV5V2starV3star.Re(),ebe_3p_weight );
-		fh_correlator[fCBin]->Fill(11.5, nV6V3star_2.Re(),ebe_3p_weight ) ;
+		if(IsFinite(nV4V2star_2.Re()) && IsFinite(ebe_3p_weight)) fh_correlator[fCBin]->Fill(9.5, nV4V2star_2.Re(),ebe_3p_weight ); // added 2015.6.10
+		if(IsFinite(nV5V2starV3star.Re()) && IsFinite(ebe_3p_weight)) fh_correlator[fCBin]->Fill(10.5, nV5V2starV3star.Re(),ebe_3p_weight );
+		if(IsFinite(nV6V3star_2.Re()) && IsFinite(ebe_3p_weight)) fh_correlator[fCBin]->Fill(11.5, nV6V3star_2.Re(),ebe_3p_weight ) ;
 
 		// use this to avoid self-correlation 4p correlation (2 particles from A, 2 particles from B) -> MA(MA-1)MB(MB-1) : evt weight..
-		fh_correlator[fCBin]->Fill(12.5, nV4V4V2V2.Re(),ebe_2Np_weight[1]);
-		fh_correlator[fCBin]->Fill(13.5, nV3V3V2V2.Re(),ebe_2Np_weight[1]);
+		if(IsFinite(nV4V4V2V2.Re()) && IsFinite(ebe_2Np_weight[1])) fh_correlator[fCBin]->Fill(12.5, nV4V4V2V2.Re(),ebe_2Np_weight[1]);
+		if(IsFinite(nV3V3V2V2.Re()) && IsFinite(ebe_2Np_weight[1])) fh_correlator[fCBin]->Fill(13.5, nV3V3V2V2.Re(),ebe_2Np_weight[1]);
 
-		fh_correlator[fCBin]->Fill(14.5, nV5V5V2V2.Re(),ebe_2Np_weight[1]);
-		fh_correlator[fCBin]->Fill(15.5, nV5V5V3V3.Re(),ebe_2Np_weight[1]);
-		fh_correlator[fCBin]->Fill(16.5, nV4V4V3V3.Re(),ebe_2Np_weight[1]);
+		if(IsFinite(nV5V5V2V2.Re()) && IsFinite(ebe_2Np_weight[1])) fh_correlator[fCBin]->Fill(14.5, nV5V5V2V2.Re(),ebe_2Np_weight[1]);
+		if(IsFinite(nV5V5V3V3.Re()) && IsFinite(ebe_2Np_weight[1])) fh_correlator[fCBin]->Fill(15.5, nV5V5V3V3.Re(),ebe_2Np_weight[1]);
+		if(IsFinite(nV4V4V3V3.Re()) && IsFinite(ebe_2Np_weight[1])) fh_correlator[fCBin]->Fill(16.5, nV4V4V3V3.Re(),ebe_2Np_weight[1]);
 
 		//higher order correlators, added 2017.8.10
-		fh_correlator[fCBin]->Fill(17.5, V8V2starV3star_2.Re(),ebe_4p_weightB );
-		fh_correlator[fCBin]->Fill(18.5, V8V2star_4.Re() ); //5p weight
-		fh_correlator[fCBin]->Fill(19.5, nV6V2star_3.Re(),ebe_4p_weightB );
-		fh_correlator[fCBin]->Fill(20.5, nV7V2star_2V3star.Re(),ebe_4p_weightB );
-		fh_correlator[fCBin]->Fill(21.5, nV8V2starV3star_2.Re(),ebe_4p_weightB );
+		if(IsFinite(V8V2starV3star_2.Re()) && IsFinite(ebe_4p_weightB)) fh_correlator[fCBin]->Fill(17.5, V8V2starV3star_2.Re(),ebe_4p_weightB );
+		if(IsFinite(V8V2star_4.Re())) fh_correlator[fCBin]->Fill(18.5, V8V2star_4.Re() ); //5p weight
+		if(IsFinite(nV6V2star_3.Re()) && IsFinite(ebe_4p_weightB)) fh_correlator[fCBin]->Fill(19.5, nV6V2star_3.Re(),ebe_4p_weightB );
+		if(IsFinite(nV7V2star_2V3star.Re()) && IsFinite(ebe_4p_weightB)) fh_correlator[fCBin]->Fill(20.5, nV7V2star_2V3star.Re(),ebe_4p_weightB );
+		if(IsFinite(nV8V2starV3star_2.Re()) && IsFinite(ebe_4p_weightB)) fh_correlator[fCBin]->Fill(21.5, nV8V2starV3star_2.Re(),ebe_4p_weightB );
 
-		fh_correlator[fCBin]->Fill(22.5, V6V2starV4star.Re(),ebe_3p_weight );
-		fh_correlator[fCBin]->Fill(23.5, V7V2starV5star.Re(),ebe_3p_weight );
-		fh_correlator[fCBin]->Fill(24.5, V7V3starV4star.Re(),ebe_3p_weight );
-		fh_correlator[fCBin]->Fill(25.5, nV6V2starV4star.Re(),ebe_3p_weight );
-		fh_correlator[fCBin]->Fill(26.5, nV7V2starV5star.Re(),ebe_3p_weight );
-		fh_correlator[fCBin]->Fill(27.5, nV7V3starV4star.Re(),ebe_3p_weight );
+		if(IsFinite(V6V2starV4star.Re()) && IsFinite(ebe_3p_weight)) fh_correlator[fCBin]->Fill(22.5, V6V2starV4star.Re(),ebe_3p_weight );
+		if(IsFinite(V7V2starV5star.Re()) && IsFinite(ebe_3p_weight)) fh_correlator[fCBin]->Fill(23.5, V7V2starV5star.Re(),ebe_3p_weight );
+		if(IsFinite(V7V3starV4star.Re()) && IsFinite(ebe_3p_weight)) fh_correlator[fCBin]->Fill(24.5, V7V3starV4star.Re(),ebe_3p_weight );
+		if(IsFinite(nV6V2starV4star.Re()) && IsFinite(ebe_3p_weight)) fh_correlator[fCBin]->Fill(25.5, nV6V2starV4star.Re(),ebe_3p_weight );
+		if(IsFinite(nV7V2starV5star.Re()) && IsFinite(ebe_3p_weight)) fh_correlator[fCBin]->Fill(26.5, nV7V2starV5star.Re(),ebe_3p_weight );
+		if(IsFinite(nV7V3starV4star.Re()) && IsFinite(ebe_3p_weight)) fh_correlator[fCBin]->Fill(27.5, nV7V3starV4star.Re(),ebe_3p_weight );
 	}
 
 	Double_t event_weight_four = 1.0;
 	Double_t event_weight_two = 1.0;
 	Double_t event_weight_two_eta10 = 1.0;
+	Double_t event_weight_two_eta14 = 1.0;
 	if(flags & FLUC_EBE_WEIGHTING){
 		event_weight_four = Four(0,0,0,0).Re();
 		event_weight_two = Two(0,0).Re();
 		event_weight_two_eta10 = (QvectorQCeta10[kSubA][0][1]*QvectorQCeta10[kSubB][0][1]).Re();
+		event_weight_two_eta14 = (QvectorQCeta14[kSubA][0][1]*QvectorQCeta14[kSubB][0][1]).Re();
 	}
 
 	for(int ih=2; ih < kNH; ih++){
@@ -602,6 +619,8 @@ void AliJFFlucAnalysisTProfile::UserExec(Option_t *) {
 
 		TComplex sctwo10 = (QvectorQCeta10[kSubA][ih][1]*TComplex::Conjugate(QvectorQCeta10[kSubB][ih][1])) / (QvectorQCeta10[kSubA][0][1]*QvectorQCeta10[kSubB][0][1]).Re();
 		fh_SC_with_QC_2corr_eta10[ih][fCBin]->Fill( sctwo10.Re(), event_weight_two_eta10 );
+		TComplex sctwo14 = (QvectorQCeta14[kSubA][ih][1]*TComplex::Conjugate(QvectorQCeta14[kSubB][ih][1])) / (QvectorQCeta14[kSubA][0][1]*QvectorQCeta14[kSubB][0][1]).Re();
+		if(IsFinite(sctwo14.Re()) && IsFinite(event_weight_two_eta14)) fh_SC_with_QC_2corr_eta14[fCBin]->Fill( float(ih)+0.5, sctwo14.Re(), event_weight_two_eta14 );
 		// fill single vn with QC method with Eta Gap as method 1
 		fSingleVn[ih][1] = TMath::Sqrt(sctwo10.Re());
 	}
@@ -776,6 +795,7 @@ void AliJFFlucAnalysisTProfile::CalculateQvectorsQC(double etamin, double etamax
 			QvectorQC[ih][ik] = TComplex(0,0);
 			for(int isub=0; isub<2; isub++){
 				QvectorQCeta10[isub][ih][ik] = TComplex(0,0);
+				QvectorQCeta14[isub][ih][ik] = TComplex(0,0);
 			}
 		}
 	} // for max harmonics
@@ -828,6 +848,8 @@ void AliJFFlucAnalysisTProfile::CalculateQvectorsQC(double etamin, double etamax
 				//this is for normalized SC ( denominator needs an eta gap )
 				if(TMath::Abs(eta) > etamin)//fQC_eta_gap_half)
 					QvectorQCeta10[isub][ih][ik] += q[ik];
+				if(TMath::Abs(eta) > 0.7) // eta14: eta gap half = 0.7
+					QvectorQCeta14[isub][ih][ik] += q[ik];
 
 				tf *= 1.0/(phi_module_corr*effCorr);
 			}

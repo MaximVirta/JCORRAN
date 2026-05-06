@@ -76,6 +76,7 @@ public:
 	}
 	enum BINNING{
 		BINNING_CENT_PbPb,
+		BINNING_CENT_OO,
 		BINNING_MULT_PbPb_1,
 		BINNING_MULT_pPb_1
 	};
@@ -92,13 +93,14 @@ public:
 	}
 
 	static Double_t CentBin_PbPb_default[][2];
+	static Double_t CentBin_OO_central[][2];
 	static Double_t MultBin_PbPb_1[][2];
 	static Double_t MultBin_pPb_1[][2];
-	static Double_t (*pBin[3])[2];
+	static Double_t (*pBin[4])[2];
 	static Double_t pttJacek[74];
 	//static UInt_t CentralityTranslationMap[CENTN_NAT];
 	//static UInt_t NCentBin;
-	static UInt_t NBin[3];
+	static UInt_t NBin[4];
 	static UInt_t NpttJacek;
 
 	//static int GetCentralityClass(Double_t);
@@ -140,6 +142,7 @@ public:
 
 	TComplex QvectorQC[kNH][nKL];
 	TComplex QvectorQCeta10[2][kNH][nKL]; // ksub
+	TComplex QvectorQCeta14[2][kNH][nKL]; // ksub, eta gap half = 0.7
 
 	AliJHistManager * fHMG;//!
 
@@ -192,6 +195,7 @@ public:
 	AliJTH1D fh_SC_with_QC_4corr;//! // for <vn^2 vm^2>
 	AliJTH1D fh_SC_with_QC_2corr;//! // for <vn^2>
 	AliJTH1D fh_SC_with_QC_2corr_eta10;//!
+	AliJTProfile fh_SC_with_QC_2corr_eta14;//! eta gap half = 0.7
 	//AliJTH2D fh_QvectorQC;//! // check for Q-vec dist for [ic][ih]
 	//AliJTH1D fh_QvectorQCphi;//!
 	AliJTH1D fh_evt_SP_QC_ratio_2p;//! // check SP QC evt by evt ratio

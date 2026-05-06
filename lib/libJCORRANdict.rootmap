@@ -1,0 +1,30 @@
+[ /projappl/project_2003154/lib/JCORRAN/lib/libJCORRANdict.so ]
+# List of selected classes
+class AliAnalysisAnaTwoMultiCorrelations
+class AliAnalysisPtVn
+class AliAnalysisSPCRun2
+class AliJAnalysisMultiplicityMeanPt
+class AliJBaseEventHeader
+class AliJBaseTrack
+class AliJEfficiency
+class AliJFFlucAnalysis
+class AliJFFlucAnalysisTProfile
+class AliJHistManager
+class AliJRunTable
+class AliJTrack
+class AliJTrackCut
+class JTreeDataManager
+header AliAnalysisAnaTwoMultiCorrelations.h
+header AliAnalysisPtVn.h
+header AliAnalysisSPCRun2.h
+header AliJAnalysisMultiplicityMeanPt.h
+header AliJBaseEventHeader.h
+header AliJBaseTrack.h
+header AliJEfficiency.h
+header AliJFFlucAnalysis.h
+header AliJFFlucAnalysisTProfile.h
+header AliJHistManager.h
+header AliJRunTable.h
+header AliJTrack.h
+header AliJTrackCut.h
+header JTreeDataManager.h
