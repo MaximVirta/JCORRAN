@@ -285,7 +285,7 @@ void AliJFFlucAnalysisTProfile::UserCreateOutputObjects(const std::string manage
 		<< "END" ;
 
 	fh_ntracks
-		<< TH1D("h_tracks", "h_tracks", 100, 0, 30000)
+		<< TH1D("h_tracks", "h_tracks", 500, 0, 500)
 		<< fHistCentBin
 		<< "END" ;
 	// Changed to TProfiles

@@ -338,7 +338,7 @@ class AliAnalysisPtVn {
   Float_t fptSubMin;
   Float_t fptSubMax;
 
-  const static Int_t nCorr = 33;
+  const static Int_t nCorr = 37;
   const static Int_t nHistCent = 12;
 
   TProfile *corrProfiles[nCorr];
@@ -357,7 +357,8 @@ class AliAnalysisPtVn {
     "pt3AMidB",
     "pt4AABB",
     "ptmid", "pt2mid",
-    "v22pt_gap", "v22_gap"};
+    "v22pt_gap", "v22_gap",
+    "v32pt_gap", "v32_gap", "v32", "v34"};
 
 
   //ClassDef(AliAnalysisPtVn, 1);

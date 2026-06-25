@@ -30,6 +30,7 @@ AliAnalysisV02::AliAnalysisV02():
   fHistList(NULL),
   fDebugLevel(0),
   fCentrality(0.),
+  fUseMultiplicityFlowWeights(kTRUE),
   fptSubMax(0.8), fptSubMin(0.4),
   fPtBins({0.0, 0.05, 0.1, 0.15, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.25, 1.5, 1.75, 2, 2.25, 2.5, 2.75, 3, 3.25, 3.5, 3.75, 4, 4.5, 5})
 {
@@ -44,6 +45,7 @@ AliAnalysisV02::AliAnalysisV02(const char *name):
   fHistList(NULL),
   fDebugLevel(0),
   fCentrality(0.),
+  fUseMultiplicityFlowWeights(kTRUE),
   fptSubMax(0.8), fptSubMin(0.4),
   fPtBins({0.0, 0.05, 0.1, 0.15, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.25, 1.5, 1.75, 2, 2.25, 2.5, 2.75, 3, 3.25, 3.5, 3.75, 4, 4.5, 5})
 {
@@ -201,11 +203,11 @@ void AliAnalysisV02::UserExec(Option_t *option) {
       double ptVal = (fPtBins[i] + fPtBins[i+1])/2.;
       double v02 = corr[0]*ptFraction; // Use integrated v22 for all species
       if (TMath::Finite(v02)) {
-        fV02Profile[iSpec]->Fill((Float_t)(centralityBin)+.5, ptVal, v02, (Qpos[0][0]*Qneg[0][0]).Re()); // v22 integrated and ptfraction from species
+        fV02Profile[iSpec]->Fill((Float_t)(centralityBin)+.5, ptVal, v02, (fUseMultiplicityFlowWeights) ? (Qpos[0][0]*Qneg[0][0]).Re() : 1.0); // v22 integrated and ptfraction from species
         fPtNchProfile[iSpec]->Fill((Float_t)(centralityBin)+.5, ptVal, ptFraction); // Fill for all species
       }
     }
-    if (TMath::Finite(corr[iSpec])) fV22Profile[iSpec]->Fill((Float_t)(centralityBin)+.5, corr[iSpec], (Qpos[iSpec][0]*Qneg[iSpec][0]).Re()); // FIll for all species
+    if (TMath::Finite(corr[iSpec])) fV22Profile[iSpec]->Fill((Float_t)(centralityBin)+.5, corr[iSpec], (fUseMultiplicityFlowWeights) ? (Qpos[iSpec][0]*Qneg[iSpec][0]).Re() : 1.0); // FIll for all species
   }
 
   // Reset event-by-event objects.

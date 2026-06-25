@@ -44,6 +44,7 @@ class AliAnalysisV02 {
   Int_t getPIDIndex(AliJBaseTrack *aTrack);
   /// General setters/getters.
   void SetInputList(TClonesArray *inputarray) {fInputList = inputarray;}
+  void SetUseFlowWeights(bool useFlowWeights) {fUseMultiplicityFlowWeights = useFlowWeights;}
   TClonesArray *GetInputList() const {return fInputList;}
   TList* GetMainList() const{return fHistList;}
   void SetDebugLevel(Int_t debuglevel) {
@@ -68,6 +69,8 @@ class AliAnalysisV02 {
   Int_t fDebugLevel;                // Verbosity of the class in the terminal.
 
   Double_t fCentrality;             // Centrality of the current event.
+
+  bool fUseMultiplicityFlowWeights;
   Float_t fptSubMin;
   Float_t fptSubMax;
   const static Int_t nPtBins = 26;
