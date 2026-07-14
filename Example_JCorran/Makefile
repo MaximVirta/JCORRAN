@@ -1,31 +1,45 @@
 PROGRAM       = main
+PROGRAM_HDF5  = main_hdf5
 
 CXX           = g++
 CXXFLAGS      = -g -O3 -Wall -Wno-deprecated
 
-# Add JCorran library
 CXXFLAGS     += $(shell jcorran-config-inc)
 LDFLAGS      += $(shell jcorran-config-lib)
 SOFLAGS       = -shared
 
-# Add ROOT dependencies
-CXXFLAGS += $(shell root-config --cflags)
-LDFLAGS += $(shell root-config --libs)
+CXXFLAGS     += $(shell root-config --cflags)
+LDFLAGS      += $(shell root-config --libs)
 
-MAIN = main.cpp
+HDF5_CXX      ?= $(shell pkg-config --cflags hdf5 2>/dev/null)
+HDF5_LIBS     ?= $(shell pkg-config --libs hdf5 2>/dev/null) -lhdf5_cpp
 
-all: $(PROGRAM)
+JCORRAN_PCM   = $(shell jcorran-config-path)/include/jcorranDict_rdict.pcm
 
-# Link the program and jcorranDict file
-$(PROGRAM): $(MAIN)
+.PHONY: all main main_hdf5 clean cl
+
+all: $(PROGRAM) $(PROGRAM_HDF5)
+
+$(PROGRAM): main.cpp
 	@echo "Linking $(PROGRAM) ..."
-	$(CXX) -lPhysics -L$(PWD) $(MAIN) $(CXXFLAGS) $(LDFLAGS) -o $(PROGRAM)
-	@ln -s $(shell jcorran-config-path)/include/jcorranDict_rdict.pcm jcorranDict_rdict.pcm # IMPORTANT
+	$(CXX) -lPhysics -L$(PWD) main.cpp $(CXXFLAGS) $(LDFLAGS) -o $(PROGRAM)
+	@$(MAKE) --no-print-directory link_pcm
 	@echo "done"
 
-# Removal of files 
-clean:
-	rm -f *Dict* $(PROGRAM).o $(PROGRAM)
+$(PROGRAM_HDF5): main_hdf5.cpp
+	@echo "Linking $(PROGRAM_HDF5) ..."
+	@if [ -z "$(HDF5_LIBS)" ]; then \
+		echo "HDF5 not found. Install HDF5 or set HDF5_CXX/HDF5_LIBS."; \
+		exit 1; \
+	fi
+	$(CXX) -lPhysics -L$(PWD) main_hdf5.cpp $(CXXFLAGS) $(HDF5_CXX) $(LDFLAGS) $(HDF5_LIBS) -o $(PROGRAM_HDF5)
+	@$(MAKE) --no-print-directory link_pcm
+	@echo "done"
 
-cl:
-	clean $(PROGRAM)
+link_pcm:
+	@[ -e jcorranDict_rdict.pcm ] || ln -s $(JCORRAN_PCM) jcorranDict_rdict.pcm
+
+clean:
+	rm -f *Dict* $(PROGRAM) $(PROGRAM_HDF5) *.o jcorranDict_rdict.pcm
+
+cl: clean
