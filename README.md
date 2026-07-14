@@ -44,3 +44,31 @@ source ~/.zshrc
 `jcorran-config-lib` outputs the lib flags required for linking.
 
 `jcorran-config-inc` outputs the cxx flags required for compiling.
+
+## Examples
+
+Two example drivers live in `Example_JCorran/`:
+
+- **`main`** — synthetic event demo (no external input files)
+- **`main_hdf5`** — production-style driver reading HDF5 hydro particle files
+
+Build both (requires HDF5 for `main_hdf5`):
+
+```bash
+cd Example_JCorran
+make
+```
+
+Run the synthetic demo:
+
+```bash
+./main --nEvents 100 -o AnalysisResults.root
+```
+
+Run the HDF5 driver:
+
+```bash
+./main_hdf5 -o AnalysisResults.root --system PbPb5020 --param 0 input.hdf
+```
+
+For custom centrality tables, pass a CSV path to `--system` and select the parametrization line with `--param`. Sample CSV files are in `Example_JCorran/dependencies/`.

@@ -18,5 +18,6 @@
 #pragma link C++ class AliJTrack+;
 #pragma link C++ class JTreeDataManager+;
 #pragma link C++ class AliJAnalysisMultiplicityMeanPt+;
+#pragma link C++ class AliAnalysisV02+;
 
 #endif

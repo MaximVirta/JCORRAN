@@ -31,8 +31,7 @@ AliAnalysisV02::AliAnalysisV02():
   fDebugLevel(0),
   fCentrality(0.),
   fUseMultiplicityFlowWeights(kTRUE),
-  fptSubMax(0.8), fptSubMin(0.4),
-  fPtBins({0.0, 0.05, 0.1, 0.15, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.25, 1.5, 1.75, 2, 2.25, 2.5, 2.75, 3, 3.25, 3.5, 3.75, 4, 4.5, 5})
+  fptSubMax(0.8), fptSubMin(0.4)
 {
 // Dummy constructor of the class.
   printf("AliAnalysisV02::AliAnalysisV02()\n");
@@ -46,8 +45,7 @@ AliAnalysisV02::AliAnalysisV02(const char *name):
   fDebugLevel(0),
   fCentrality(0.),
   fUseMultiplicityFlowWeights(kTRUE),
-  fptSubMax(0.8), fptSubMin(0.4),
-  fPtBins({0.0, 0.05, 0.1, 0.15, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.25, 1.5, 1.75, 2, 2.25, 2.5, 2.75, 3, 3.25, 3.5, 3.75, 4, 4.5, 5})
+  fptSubMax(0.8), fptSubMin(0.4)
 {
 // Constructor of the class.
   printf("AliAnalysisV02::AliAnalysisV02(const char *name)\n");
@@ -72,6 +70,13 @@ AliAnalysisV02::~AliAnalysisV02()
 }
 
 void AliAnalysisV02::InitializeArrays() {
+  const Double_t ptBinsInit[nPtBins+1] = {
+    0.0, 0.05, 0.1, 0.15, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1,
+    1.25, 1.5, 1.75, 2, 2.25, 2.5, 2.75, 3, 3.25, 3.5, 3.75, 4, 4.5, 5
+  };
+  for (Int_t i = 0; i < nPtBins+1; ++i) {
+    fPtBins[i] = ptBinsInit[i];
+  }
   for (Int_t i = 0; i < nSpecies; ++i) {
     fV02Profile[i] = NULL;
     fPtNchProfile[i] = NULL;
