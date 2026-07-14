@@ -72,3 +72,35 @@ Run the HDF5 driver:
 ```
 
 For custom centrality tables, pass a CSV path to `--system` and select the parametrization line with `--param`. Sample CSV files are in `Example_JCorran/dependencies/`.
+
+## Analysis flow (`main_hdf5`)
+
+```mermaid
+flowchart TD
+  A[Parse CLI flags] --> B[Select binning mode]
+  B --> C[InitialiseCentrality<br/>built-in system or CSV]
+  C --> D{--forwardCent?}
+  D -->|yes| E[InitialiseForwardCentrality]
+  D -->|no| F[InitialiseAnalyses]
+  E --> F
+  F --> G[Open HDF5 input files]
+  G --> H[For each event dataset]
+  H --> I[Read dNch/deta → centrality bin]
+  I --> J{In range?}
+  J -->|no| H
+  J -->|yes| K[Fill ε₂ ε₃ QA]
+  K --> L[Group particles by freeze-out sample]
+  L --> M[Charged tracks: PID QA + pT/η cuts]
+  M --> N[FillAndRunAnalyses]
+  N --> N1[AliJFFlucAnalysisTProfile]
+  N --> N2[AliAnalysisPtVn]
+  N --> N3[optional SPC / V02]
+  N --> N4[optional forward copies]
+  N1 --> H
+  N2 --> H
+  N3 --> H
+  N4 --> H
+  H --> O[WriteLists + close ROOT file]
+```
+
+**Helper functions:** `InitialiseDataTypes` · `InitialiseCentrality` · `InitialiseForwardCentrality` · `InitialiseAnalyses` · `FillAndRunAnalyses`
