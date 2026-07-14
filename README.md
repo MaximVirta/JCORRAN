@@ -104,3 +104,15 @@ flowchart TD
 ```
 
 **Helper functions:** `InitialiseDataTypes` · `InitialiseCentrality` · `InitialiseForwardCentrality` · `InitialiseAnalyses` · `FillAndRunAnalyses`
+
+### pT / η / centrality (where they apply)
+
+| Layer | What | Notes |
+|---|---|---|
+| Driver gate | `--pTmin/--pTmax`, `--absEtaMax` | Global filter into `pinputList` for all analyses |
+| η-gap (not acceptance) | `--absEtaMin`, `--absEtaMaxVnPt` | Subevent geometry via `SetEtaRange` / `SetPtSubRange` (η ranges) |
+| JFluc QC | Hardcoded pT 0.2–5.0 | Extra cut inside library |
+| Centrality % | From `dNch_deta` (+ forward) | Midrap `cent` passed to all `SetEventCentrality` (as in JCORRAN_analysis); `cent_forward` only for forward QA indexing / event selection |
+| Bin edges | Per class `GetBin` / `SelectCentrality` | JFluc & PtVn finer; SPC & V02 use 0–80% wide bins |
+
+See the interactive flowchart canvas (**pT / η / centrality** tab) for the full diagram.
