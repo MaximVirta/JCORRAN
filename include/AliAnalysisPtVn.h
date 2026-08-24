@@ -40,6 +40,7 @@ class AliAnalysisPtVn {
   // General methods specific to this analysis class.
   virtual void InitializeArrays();
   virtual void BookAndNestAllLists();
+  virtual void SetUseMultWeight(Bool_t useWeight) {fUseMultWeight = useWeight;}
 
 
 //// Correlation calculations ////
@@ -331,6 +332,7 @@ class AliAnalysisPtVn {
   TClonesArray *fInputList;         // Input tracks selected in the JCatalyst.
   TList *fHistList;                 // Base list to hold all output objects.
   Int_t fDebugLevel;                // Verbosity of the class in the terminal.
+  Bool_t fUseMultWeight;
 
   Double_t fCentrality;             // Centrality of the current event.
 

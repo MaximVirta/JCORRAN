@@ -30,6 +30,7 @@ AliAnalysisPtVn::AliAnalysisPtVn():
   fHistList(NULL),
   fDebugLevel(0),
   fCentrality(0.),
+  fUseMultWeight(kTRUE),
   fptSubMax(0.8), fptSubMin(0.4),
   fCentralityBins(16)
 {
@@ -44,6 +45,7 @@ AliAnalysisPtVn::AliAnalysisPtVn(const char *name):
   fHistList(NULL),
   fDebugLevel(0),
   fCentrality(0.),
+  fUseMultWeight(kTRUE),
   fptSubMax(0.8), fptSubMin(0.4),
   fCentralityBins(9)
 {
@@ -217,16 +219,22 @@ void AliAnalysisPtVn::UserExec(Option_t *option) {
 
   //rho(v3^2,[pt])
   corr[33] = psubMid[1]*(Q3pos[1]*Q3neg[1]).Re()/((Q3pos[0]*Q3neg[0]).Re()*psubMid[0]); //! <v32 gap * [pt]^mid>
-  corr[34] = (Q3pos[1]*Q3neg[1]).Re()/((Q3pos[0]*Q3neg[0]).Re()); //! <v32 gap>
+  corr[34] = (fUseMultWeight) ? (Qpos[1]*Qneg[1]).Re()/((Qpos[0]*Qneg[0]).Re()) : (Q3pos[1]*Q3neg[1]).Re()/((Q3pos[0]*Q3neg[0]).Re()) ; //! <v32 gap> 
   corr[35] = getStdAB(abcd_v3)/getStdAB(wabcd_v3); //! v_3^2
   corr[36] = getStdAABB(abcd_v3)/getStdAABB(wabcd_v3); //! v_3^4
 
   for (int i = 0; i < nCorr; i++) {
     double multWeight = 1.;
-    if (i==31) {
+    if (i==31 && fUseMultWeight) {
       multWeight = (Qpos[0]*Qneg[0]).Re()*psubMid[0];
-    } else if (i==32) {
+    } else if (i==32 && fUseMultWeight) {
       multWeight = (Qpos[0]*Qneg[0]).Re()*psubMid[0];
+    // } else if (i==29 && fUseMultWeight) {
+    //   multWeight = psubMid[0];
+    // } else if (i==19 && fUseMultWeight) {
+    //   multWeight =  (Qpos[0]*Qneg[0]).Re()*psubMid[0];
+    // } else if (i==34 && fUseMultWeight) {
+    //   multWeight = (Qpos[0]*Qneg[0]).Re();
     }
     if (TMath::Finite(corr[i])) corrProfiles[i]->Fill((Float_t)(centralityBin)+0.5, corr[i],multWeight); //Event weight for v22-pt gap for consistency with pub.
   }
