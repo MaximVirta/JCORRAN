@@ -72,14 +72,12 @@ int main(int argc, char **pargv){
 
 	if (bSC) {
 		cout << "Computing SC" << endl;
-		pca_SC->SetJWeights(kFALSE,0);
 		pca_SC->SetMinMultiplicity(10);
 		pca_SC->SetPtRange(0.2, 5.0);
 		pca_SC->SetObservable(true, false);
 	}
 	if (bAC) {
 		cout << "Computing AC" << endl;
-		pca_AC->SetJWeights(kFALSE,0);
 		pca_AC->SetMinMultiplicity(10);
 		pca_AC->SetPtRange(0.2, 5.0);
 		pca_AC->SetObservable(false, true);

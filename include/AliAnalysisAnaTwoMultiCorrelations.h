@@ -15,7 +15,6 @@
 #include "TFile.h"
 #include "TList.h"
 #include "TComplex.h"
-#include "AliJEfficiency.h"
 #include "TH1F.h"
 #include "TH1I.h"
 #include "TH2I.h"
@@ -43,13 +42,6 @@ public:
   virtual void InitialiseArrayMembers();
   virtual void BookFinalResults();
   TList* GetTList() const {return fMainList;} // Get the list for external task.
-
-  AliJEfficiency* GetAliJEfficiency() const {return fEfficiency;}
-  void SetJWeights(Bool_t useJEfficiency, Int_t indexFilter)
-  {
-    fUseJEfficiency = useJEfficiency;
-    fFilterbitIndex = indexFilter;
-  }
 
   void SetMinMultiplicity(int minMult) {fMultiplicityMin = minMult;}
   void SetPtRange(double minPt, double maxPt) {fPtMin = minPt; fPtMax = maxPt;}
@@ -81,13 +73,7 @@ private:
   Int_t fMultiplicityMin;   // Minimum multiplicity to calculate the correlators.
   double fPtMin;                // Minimum transverse momentum.
   double fPtMax;                // Maximum transverse momentum.
-  Bool_t fUseJEfficiency;
-  AliJEfficiency *fEfficiency;  // Used to apply NUE to the data.
   Bool_t fFirstEvent;       ///< True if this is the first event analyzed.
-  Int_t fFilterbitIndex;    // Index used for the efficiency correction, must correspond to the main filter.
-    // 0: TPCOnly; 6: hybrid (This work for AOD86, I am not sure if it is work for new AOD).
-  TH1F *fHistoEfficiency;   //! Distribution of the efficiency correction.
-  TH1F *fHistoEffInverse;   //! Distribution of the inverse of the efficiency correction.
 
   int fHarmoArray2h[13][2];     // Combinations of 2-harmonics for AC/SC.
     // 13: max number of combinations of 2 harmonics.

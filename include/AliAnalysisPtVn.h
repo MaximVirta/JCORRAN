@@ -23,8 +23,6 @@
 #include <vector>
 #include <complex>
 
-#include "AliJEfficiency.h"
-
 class TClonesArray;
 class AliAnalysisPtVn {
  public:

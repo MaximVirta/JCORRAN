@@ -40,9 +40,7 @@ AliAnalysisAnaTwoMultiCorrelations::AliAnalysisAnaTwoMultiCorrelations():
   fCentrality(-1), fCentralityBin(-1),
   fMultiplicity(0), fMultiplicityMin(10),
   fPtMin(0.2), fPtMax(5.0),
-  fEfficiency(NULL), fFirstEvent(kTRUE),
-  fUseJEfficiency(kTRUE), fFilterbitIndex(0),
-  fHistoEfficiency(NULL), fHistoEffInverse(NULL),
+  fFirstEvent(kTRUE),
   fNCombi(7), fGetSC(kTRUE), fGetLowerHarmos(kTRUE)
 {
 // Dummy constructor of the class.
@@ -56,9 +54,7 @@ AliAnalysisAnaTwoMultiCorrelations::AliAnalysisAnaTwoMultiCorrelations(const cha
   fCentrality(-1), fCentralityBin(-1),
   fMultiplicity(0), fMultiplicityMin(10),
   fPtMin(0.2), fPtMax(5.0),
-  fEfficiency(NULL), fFirstEvent(kTRUE),
-  fUseJEfficiency(kTRUE), fFilterbitIndex(0),
-  fHistoEfficiency(NULL), fHistoEffInverse(NULL),
+  fFirstEvent(kTRUE),
   fNCombi(7), fGetSC(kTRUE), fGetLowerHarmos(kTRUE)
 {
 // Constructor of the class.
@@ -85,13 +81,6 @@ AliAnalysisAnaTwoMultiCorrelations::~AliAnalysisAnaTwoMultiCorrelations()
 void AliAnalysisAnaTwoMultiCorrelations::UserCreateOutputObjects()
 {
 // Declare the outputs of the task at the beginning of the analysis.
-  if (fUseJEfficiency)
-  {
-    fEfficiency = new AliJEfficiency();
-    fEfficiency->SetMode(1);  // 1: priod should work for you
-    fEfficiency->SetDataPath("alien:///alice/cern.ch/user/d/djkim/legotrain/efficieny/data");
-  }
-
   this->BookFinalResults();
   fFirstEvent = kTRUE;
 }
@@ -127,8 +116,6 @@ void AliAnalysisAnaTwoMultiCorrelations::UserExec(Option_t *)
   Double_t *iPhi = new Double_t[fMultiplicity]();       // Azimuthal angles.
   Double_t *iWeights = new Double_t[fMultiplicity]();   // Particle weights.
   Int_t iIndex = 0;           // Index of the selected track in the final arrays.
-  Float_t iEffCorr = 1.;      // Efficiency (Inverse gives the pT-weight).
-  Float_t iEffInverse = 1.;   // Inverse of the efficiency correction.
 
   for (Int_t iTrack = 0; iTrack < fMultiplicity; iTrack++) {
     AliJBaseTrack *aTrack = (AliJBaseTrack*)fInputList->At(iTrack);
@@ -137,12 +124,7 @@ void AliAnalysisAnaTwoMultiCorrelations::UserExec(Option_t *)
     iPt[iIndex] = aTrack->Pt();
     iEta[iTrack] = aTrack->Eta();
     iPhi[iTrack] = aTrack->Phi();
-    iWeights[iIndex] = 1.;  // Unit particle weight. Updated just after if needed.
-    if (fUseJEfficiency) {
-      iEffCorr = fEfficiency->GetCorrection(iPt[iIndex], fFilterbitIndex, fCentrality);
-      iEffInverse = 1.0/iEffCorr;
-      iWeights[iIndex] = iEffInverse;
-    }
+    iWeights[iIndex] = 1.;  // Unit particle weight.
 
     iIndex++;
   }
@@ -157,7 +139,6 @@ void AliAnalysisAnaTwoMultiCorrelations::UserExec(Option_t *)
   delete [] iEta;
   delete [] iPhi;
   delete [] iWeights;
-  iEffCorr = 1.;
 }
 
 /* ------------------------------------------------------------------------- */
@@ -354,19 +335,8 @@ void AliAnalysisAnaTwoMultiCorrelations::ComputeAllTerms()
         return;
     }
 
-    // Validate first profile array
-    if (!fCorrel2p) {
-        std::cerr << "CRITICAL: fCorrel2p is null" << std::endl;
-        return;
-    }
     if (!fCorrel2p[fCentralityBin]) {
         std::cerr << "CRITICAL: fCorrel2p[" << fCentralityBin << "] is null" << std::endl;
-        return;
-    }
-
-    // Validate second profile array
-    if (!fCorrel2h) {
-        std::cerr << "CRITICAL: fCorrel2h is null" << std::endl;
         return;
     }
 
@@ -420,7 +390,7 @@ void AliAnalysisAnaTwoMultiCorrelations::ComputeAllTerms()
             }
 
             // Validate profile pointer
-            if (!fCorrel2h[iProf] || !fCorrel2h[iProf][fCentralityBin]) {
+            if (!fCorrel2h[iProf][fCentralityBin]) {
                 std::cerr << "Error: Invalid profile pointer at iProf=" << iProf 
                           << " fCentralityBin=" << fCentralityBin << std::endl;
                 continue;

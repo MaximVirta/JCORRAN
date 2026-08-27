@@ -8,13 +8,9 @@
 #pragma link C++ class AliAnalysisSPCRun2+;
 #pragma link C++ class AliJBaseEventHeader+;
 #pragma link C++ class AliJBaseTrack+;
-#pragma link C++ class AliJConst+;
-#pragma link C++ class AliJEfficiency+;
 #pragma link C++ class AliJFFlucAnalysis+;
 #pragma link C++ class AliJFFlucAnalysisTProfile+;
 #pragma link C++ class AliJHistManager+;
-#pragma link C++ class AliJRunTable+;
-#pragma link C++ class AliJTrackCut+;
 #pragma link C++ class AliJTrack+;
 #pragma link C++ class JTreeDataManager+;
 #pragma link C++ class AliJAnalysisMultiplicityMeanPt+;

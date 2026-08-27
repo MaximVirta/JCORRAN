@@ -32,7 +32,7 @@
 #include "AliJBaseTrack.h"
 #include "AliJTrack.h"
 
-//ClassImp(AliJTrack)
+ClassImp(AliJTrack)
 
 //______________________________________________________________________________
 AliJTrack::AliJTrack() : 

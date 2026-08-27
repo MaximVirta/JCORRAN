@@ -83,7 +83,7 @@ class AliAnalysisSPCRun2 {
   AliAnalysisSPCRun2& operator=(const AliAnalysisSPCRun2& aat);
 
   TClonesArray *fInputList;         // Input tracks selected in the JCatalyst.
-  std::unique_ptr<TList> fHistList;                 // Base list to hold all output objects.
+  std::unique_ptr<TList> fHistList;                 //! Base list to hold all output objects.
   Int_t fDebugLevel;                // Verbosity of the class in the terminal.
 
   Double_t fCentrality;             // Centrality of the current event.

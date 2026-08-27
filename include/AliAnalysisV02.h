@@ -24,8 +24,6 @@
 #include <vector>
 #include <complex>
 
-#include "AliJEfficiency.h"
-
 class TClonesArray;
 class AliAnalysisV02 {
  public:

@@ -1,18 +1,29 @@
 #!/bin/bash
+set -e
 CURDIR=$PWD
-mkdir -p $( jcorran-config-path )/lib
-rm -f $( jcorran-config-path )/lib/*
-cd $( jcorran-config-path )/include
+JCORRAN_PATH=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )"/.. &> /dev/null && pwd )
+export PATH="$JCORRAN_PATH/bin:$PATH"
+
+mkdir -p "$JCORRAN_PATH/lib"
+rm -f "$JCORRAN_PATH/lib/"*
+cd "$JCORRAN_PATH/include"
 echo "Generating ROOT dictionary for the JCORRAN..."
-rootcling -f $( jcorran-config-path )/src/Base/jcorranDict.cxx *.h -s $( jcorran-config-path )/lib/JCORRANdict -rml $( jcorran-config-path )/lib/libJCORRANdict.so -rmf $( jcorran-config-path )/lib/libJCORRANdict.rootmap
-cd $( jcorran-config-path )/src/Base
-rm -f *.o
-echo "Creating JCORRAN lib to $( jcorran-config-path )/lib"
-# Create the lib directory if it doesn't exist
+# LinkDef.h must be last. Exclude leftover rootcling temps from the glob.
+rootcling -f "$JCORRAN_PATH/src/Base/jcorranDict.cxx" \
+  Ali*.h JTreeDataManager.h LinkDef.h \
+  -s "$JCORRAN_PATH/lib/JCORRANdict" \
+  -rml "$JCORRAN_PATH/lib/libJCORRANdict.so" \
+  -rmf "$JCORRAN_PATH/lib/libJCORRANdict.rootmap"
+
+cd "$JCORRAN_PATH/src/Base"
+rm -f *.o jcorranDict.cxx_tmp_*
+echo "Creating JCORRAN lib to $JCORRAN_PATH/lib"
 echo "Compiling objects..."
-g++ -c *.cxx $( root-config --cflags ) -I$( jcorran-config-path )/include -fPIC
+# Compile only real sources plus the generated dictionary, not editor backups.
+g++ -c Ali*.cxx JTreeDataManager.cxx jcorranDict.cxx $( root-config --cflags ) -I"$JCORRAN_PATH/include" -fPIC
 echo "Creating a shared library for ROOT..."
-g++ -fPIC --shared `root-config --cflags --libs` `jcorran-config-inc` -o $( jcorran-config-path )/lib/libJCORRANdict.so *.cxx
-# echo "Creating static library..."
-ar rcs $( jcorran-config-path )/lib/libJCORRANbase.a *.o && echo "JCorran library created succesfully!"
-cd $CURDIR
+g++ -fPIC --shared $(root-config --cflags --libs) -I"$JCORRAN_PATH/include" \
+  -o "$JCORRAN_PATH/lib/libJCORRANdict.so" \
+  Ali*.cxx JTreeDataManager.cxx jcorranDict.cxx
+ar rcs "$JCORRAN_PATH/lib/libJCORRANbase.a" *.o && echo "JCorran library created succesfully!"
+cd "$CURDIR"

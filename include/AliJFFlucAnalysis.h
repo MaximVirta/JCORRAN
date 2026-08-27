@@ -2,13 +2,13 @@
 #define AliJFFlucAnalysis_cxx
 
 //#include <AliAnalysisTaskSE.h>
-#include "AliJEfficiency.h"
 #include "AliJHistManager.h"
 #include <TComplex.h>
+#include <TFile.h>
+#include <TGraphErrors.h>
 #include <TF3.h>
 
 class TClonesArray;
-class AliJEfficiency;
 
 class AliJFFlucAnalysis{// : public AliAnalysisTaskSE {
 public:
@@ -60,7 +60,6 @@ public:
 	double Fill_QA_plot(double eta1, double eta2 );
 
 	double Get_ScaledMoments( int k, int harmonics);
-	AliJEfficiency* GetAliJEfficiency() const{return fEfficiency;}
 
 	// new function for QC method //
 	void CalculateQvectorsQC(double, double);
@@ -117,7 +116,6 @@ public:
 	bool b_vnpt_graphs;
 	bool fDebug;
 	TClonesArray *fInputList;
-	AliJEfficiency *fEfficiency;
 	const double *fVertex;//!
 	TH1 *pPhiWeights;//!
 	TF3 *pPhiWeightsAna;//!
