@@ -14,7 +14,7 @@ LDFLAGS      += $(shell root-config --libs)
 HDF5_CXX      ?= $(shell pkg-config --cflags hdf5 2>/dev/null)
 HDF5_LIBS     ?= $(shell pkg-config --libs hdf5 2>/dev/null) -lhdf5_cpp
 
-JCORRAN_PCM   = $(shell jcorran-config-path)/include/jcorranDict_rdict.pcm
+JCORRAN_PCM   = $(shell jcorran-config-path)/include/JCORRANdict_rdict.pcm
 
 .PHONY: all main main_hdf5 clean cl
 
@@ -33,13 +33,12 @@ $(PROGRAM_HDF5): main_hdf5.cpp
 		exit 1; \
 	fi
 	$(CXX) -lPhysics -L$(PWD) main_hdf5.cpp $(CXXFLAGS) $(HDF5_CXX) $(LDFLAGS) $(HDF5_LIBS) -o $(PROGRAM_HDF5)
-	@$(MAKE) --no-print-directory link_pcm
 	@echo "done"
 
 link_pcm:
-	@[ -e jcorranDict_rdict.pcm ] || ln -s $(JCORRAN_PCM) jcorranDict_rdict.pcm
+	@[ -e JCORRANdict_rdict.pcm ] || ln -s $(JCORRAN_PCM) JCORRANdict_rdict.pcm
 
 clean:
-	rm -f *Dict* $(PROGRAM) $(PROGRAM_HDF5) *.o jcorranDict_rdict.pcm
+	rm -f *Dict* $(PROGRAM) $(PROGRAM_HDF5) *.o JCORRANdict_rdict.pcm
 
 cl: clean
