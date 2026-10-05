@@ -10,6 +10,7 @@
 #pragma link C++ class AliJBaseTrack+;
 #pragma link C++ class AliJFFlucAnalysis+;
 #pragma link C++ class AliJFFlucAnalysisTProfile+;
+#pragma link C++ class AliJFFlucAnalysisReduced+;
 #pragma link C++ class AliJHistManager+;
 #pragma link C++ class AliJTrack+;
 #pragma link C++ class JTreeDataManager+;
