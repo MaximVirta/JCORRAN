@@ -5,6 +5,7 @@
 
 #pragma link C++ class AliAnalysisAnaTwoMultiCorrelations+;
 #pragma link C++ class AliAnalysisPtVn+;
+#pragma link C++ class AliAnalysisPtVnWeighted+;
 #pragma link C++ class AliAnalysisSPCRun2+;
 #pragma link C++ class AliJBaseEventHeader+;
 #pragma link C++ class AliJBaseTrack+;
