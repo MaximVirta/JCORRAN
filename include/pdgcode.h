@@ -697,7 +697,9 @@ class PdgCode {
  * bit field order is like in the gnu c compiler for 64 bit
  * architectures (if you are unsure, try one and check the pdgcode
  * test). */
-#if defined(__GNUC__) && (defined(__x86_64__) || defined(__i386__)) || \
+#if defined(__GNUC__) &&                                                     \
+        (defined(__x86_64__) || defined(__i386__) || defined(__aarch64__) ||  \
+         defined(__arm64__)) ||                                               \
     defined(DOXYGEN)
 #define SMASH_BITFIELD_ORDER_ 1
 /* put your compiler here if the bit field order is reversed w.r.t. gnu

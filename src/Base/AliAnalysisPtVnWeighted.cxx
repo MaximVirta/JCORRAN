@@ -83,7 +83,8 @@ void AliAnalysisPtVnWeighted::InitializeArrays() {
 void AliAnalysisPtVnWeighted::BookAndNestAllLists() {
   for (int i = 0; i < nCorr; ++i) {
     corrProfiles[i] = new TProfile(Form("profile_%s", corrlistnames[i].Data()), corrlistnames[i].Data(),
-      nHistCent, 0, float(nHistCent), "s");
+      nHistCent, 0, float(nHistCent), "e");
+      corrProfiles[i]->Sumw2();
     fHistList->Add(corrProfiles[i]);
   }
 }
@@ -202,7 +203,7 @@ void AliAnalysisPtVnWeighted::UserExec(Option_t *option) {
 
   const Double_t ptA = psubA[1]/mA;
   const Double_t ptB = psubB[1]/mB;
-  const Double_t ptMid = psubMid[1]/mMid;
+  const Double_t ptC = psubMid[1]/mMid;
   const Double_t pt2AB = psubA[1]*psubB[1]/w2AB;
   const Double_t pt2AA = (psubA[1]*psubA[1] - psubA[2])/w2AA;
   const Double_t pt2BB = (psubB[1]*psubB[1] - psubB[2])/w2BB;
@@ -210,105 +211,108 @@ void AliAnalysisPtVnWeighted::UserExec(Option_t *option) {
   const Double_t pt2MidB = psubB[1]*psubMid[1]/w2MidB;
   const Double_t pt3AAB = pt2AA*ptB;
   const Double_t pt3ABB = pt2BB*ptA;
-  const Double_t pt3AMidB = ptA*ptB*ptMid;
+  const Double_t pt3AMidB = ptA*ptB*ptC;
   const Double_t pt4AABB = pt2AA*pt2BB;
 
   Double_t corr[nCorr] = {0.};
   Double_t evtWeight[nCorr] = {0.};
 
   // <pt> with 1-, 2-, 3- and 4-particle weights. 3-particle: AAB and ABB.
-  corr[kPtA] = corr[kPtA_w2] = corr[kPtA_w3AAB] = corr[kPtA_w3ABB] = corr[kPtA_w4] = ptA;
-  evtWeight[kPtA] = w1A;
-  evtWeight[kPtA_w2] = w2AB;
+  corr[kPtA_w1A] = corr[kPtA_w2AB] = corr[kPtA_w2AA] = corr[kPtA_w3AAB] = corr[kPtA_w3ABB] = corr[kPtA_w4AABB] = ptA;
+  evtWeight[kPtA_w1A] = w1A;
+  evtWeight[kPtA_w2AB] = w2AB;
+  evtWeight[kPtA_w2AA] = w2AA;
   evtWeight[kPtA_w3AAB] = w3AAB;
   evtWeight[kPtA_w3ABB] = w3ABB;
-  evtWeight[kPtA_w4] = w4AABB;
+  evtWeight[kPtA_w4AABB] = w4AABB;
 
-  corr[kPtB] = corr[kPtB_w2] = corr[kPtB_w3AAB] = corr[kPtB_w3ABB] = corr[kPtB_w4] = ptB;
-  evtWeight[kPtB] = w1B;
-  evtWeight[kPtB_w2] = w2AB;
+  corr[kPtB_w1B] = corr[kPtB_w2AB] = corr[kPtB_w2BB] = corr[kPtB_w3AAB] = corr[kPtB_w3ABB] = corr[kPtB_w4AABB] = ptB;
+  evtWeight[kPtB_w1B] = w1B;
+  evtWeight[kPtB_w2AB] = w2AB;
+  evtWeight[kPtB_w2BB] = w2BB;
   evtWeight[kPtB_w3AAB] = w3AAB;
   evtWeight[kPtB_w3ABB] = w3ABB;
-  evtWeight[kPtB_w4] = w4AABB;
+  evtWeight[kPtB_w4AABB] = w4AABB;
 
-  corr[kPtMid] = corr[kPtMid_w3] = ptMid;
-  evtWeight[kPtMid] = mMid;
-  evtWeight[kPtMid_w3] = wGap22pt;
+  corr[kPtC_w1C] = corr[kPtC_w3ABC] = ptC;
+  evtWeight[kPtC_w1C] = mMid;
+  evtWeight[kPtC_w3ABC] = wGap22pt;
 
   // <pt^2> with 2-, 3- and 4-particle weights. 3-particle: AAB and ABB.
-  corr[kPt2AB] = corr[kPt2AB_w3AAB] = corr[kPt2AB_w3ABB] = corr[kPt2AB_w4] = pt2AB;
-  evtWeight[kPt2AB] = w2AB;
+  corr[kPt2AB_w2AB] = corr[kPt2AB_w3AAB] = corr[kPt2AB_w3ABB] = corr[kPt2AB_w4AABB] = pt2AB;
+  evtWeight[kPt2AB_w2AB] = w2AB;
   evtWeight[kPt2AB_w3AAB] = w3AAB;
   evtWeight[kPt2AB_w3ABB] = w3ABB;
-  evtWeight[kPt2AB_w4] = w4AABB;
+  evtWeight[kPt2AB_w4AABB] = w4AABB;
 
-  corr[kPt2AA] = corr[kPt2AA_w3AAB] = corr[kPt2AA_w3ABB] = corr[kPt2AA_w4] = pt2AA;
-  evtWeight[kPt2AA] = w2AA;
+  corr[kPt2AA_w2AA] = corr[kPt2AA_w3AAB] = corr[kPt2AA_w3ABB] = corr[kPt2AA_w4AABB] = pt2AA;
+  evtWeight[kPt2AA_w2AA] = w2AA;
   evtWeight[kPt2AA_w3AAB] = w3AAB;
   evtWeight[kPt2AA_w3ABB] = w3ABB;
-  evtWeight[kPt2AA_w4] = w4AABB;
+  evtWeight[kPt2AA_w4AABB] = w4AABB;
 
-  corr[kPt2BB] = corr[kPt2BB_w3AAB] = corr[kPt2BB_w3ABB] = corr[kPt2BB_w4] = pt2BB;
-  evtWeight[kPt2BB] = w2BB;
+  corr[kPt2BB_w2BB] = corr[kPt2BB_w3AAB] = corr[kPt2BB_w3ABB] = corr[kPt2BB_w4AABB] = pt2BB;
+  evtWeight[kPt2BB_w2BB] = w2BB;
   evtWeight[kPt2BB_w3AAB] = w3AAB;
   evtWeight[kPt2BB_w3ABB] = w3ABB;
-  evtWeight[kPt2BB_w4] = w4AABB;
+  evtWeight[kPt2BB_w4AABB] = w4AABB;
 
-  corr[kPt2AMid] = pt2AMid;
-  evtWeight[kPt2AMid] = w2AMid;
-  corr[kPt2MidB] = pt2MidB;
-  evtWeight[kPt2MidB] = w2MidB;
+  corr[kPt2AC_w2AC] = pt2AMid;
+  evtWeight[kPt2AC_w2AC] = w2AMid;
+  corr[kPt2CB_w2CB] = pt2MidB;
+  evtWeight[kPt2CB_w2CB] = w2MidB;
 
   // <pt^3> with 3- and 4-particle weights. 3-particle fills are AAB and ABB.
-  corr[kPt3AAB] = corr[kPt3AAB_w4] = pt3AAB;
-  evtWeight[kPt3AAB] = w3AAB;
-  evtWeight[kPt3AAB_w4] = w4AABB;
-  corr[kPt3ABB] = corr[kPt3ABB_w4] = pt3ABB;
-  evtWeight[kPt3ABB] = w3ABB;
-  evtWeight[kPt3ABB_w4] = w4AABB;
+  corr[kPt3AAB_w3AAB] = corr[kPt3AAB_w4AABB] = pt3AAB;
+  evtWeight[kPt3AAB_w3AAB] = w3AAB;
+  evtWeight[kPt3AAB_w4AABB] = w4AABB;
+  corr[kPt3ABB_w3ABB] = corr[kPt3ABB_w4AABB] = pt3ABB;
+  evtWeight[kPt3ABB_w3ABB] = w3ABB;
+  evtWeight[kPt3ABB_w4AABB] = w4AABB;
 
-  corr[kPt3AMidB] = pt3AMidB;
-  evtWeight[kPt3AMidB] = w3AMidB;
+  corr[kPt3ABC_w3ABC] = pt3AMidB;
+  evtWeight[kPt3ABC_w3ABC] = w3AMidB;
 
   // <pt^4> with the 4-particle weight.
-  corr[kPt4AABB] = pt4AABB;
-  evtWeight[kPt4AABB] = w4AABB;
+  corr[kPt4AABB_w4AABB] = pt4AABB;
+  evtWeight[kPt4AABB_w4AABB] = w4AABB;
 
-  // <v_2^2>, <v_2^2 ptA>, <v_2^2 ptB>, <v_2^2 ptA ptB> with the same w4.
+  // <v_2^2>, <v_2^2 ptA>, <v_2^2 ptB>, <v_2^2 ptA ptB> with the same w4AABB.
   // Flow and pT particles are distinct: one flow leg and one pT leg in A,
   // and the same in B.
   const TComplex flowPtA = QA*psubA[1] - QpA;
   const TComplex flowPtB = QB*psubB[1] - QpB;
-  corr[kV22_w4] = (QA*TComplex::Conjugate(QB)).Re()/w2AB;
-  corr[kV22ptA_w4] = (flowPtA*TComplex::Conjugate(QB)).Re()/(w2AA*mB);
-  corr[kV22ptB_w4] = (QA*TComplex::Conjugate(flowPtB)).Re()/(mA*w2BB);
-  corr[kV22ptAptB_w4] = (flowPtA*TComplex::Conjugate(flowPtB)).Re()/w4AABB;
-  evtWeight[kV22_w4] = evtWeight[kV22ptA_w4] = evtWeight[kV22ptB_w4] = evtWeight[kV22ptAptB_w4] = w4AABB;
+  corr[kV22_w4AABB] = (QA*TComplex::Conjugate(QB)).Re()/w2AB;
+  corr[kV22ptA_w4AABB] = (flowPtA*TComplex::Conjugate(QB)).Re()/(w2AA*mB);
+  corr[kV22ptB_w4AABB] = (QA*TComplex::Conjugate(flowPtB)).Re()/(mA*w2BB);
+  corr[kV22ptAptB_w4AABB] = (flowPtA*TComplex::Conjugate(flowPtB)).Re()/w4AABB;
+  evtWeight[kV22_w4AABB] = evtWeight[kV22ptA_w4AABB] = evtWeight[kV22ptB_w4AABB] = evtWeight[kV22ptAptB_w4AABB] = w4AABB;
 
-  corr[kPt2mid] = (psubMid[1]*psubMid[1] - psubMid[2])/w2Mid;
-  evtWeight[kPt2mid] = w2Mid;
+  corr[kPt2CC_w2CC] = (psubMid[1]*psubMid[1] - psubMid[2])/w2Mid;
+  evtWeight[kPt2CC_w2CC] = w2Mid;
 
-  corr[kV22pt_gap] = psubMid[1]*(Qpos[1]*Qneg[1]).Re()/wGap22pt;
-  evtWeight[kV22pt_gap] = wGap22pt;
-  corr[kV22_gap] = corr[kV22_w3] = (Qpos[1]*Qneg[1]).Re()/wGap22;
-  evtWeight[kV22_gap] = wGap22;
-  evtWeight[kV22_w3] = wGap22pt;
+  corr[kV22ptC_w3ABC] = psubMid[1]*(Qpos[1]*Qneg[1]).Re()/wGap22pt;
+  evtWeight[kV22ptC_w3ABC] = wGap22pt;
+  corr[kV22_w2AB] = corr[kV22_w3ABC] = (Qpos[1]*Qneg[1]).Re()/wGap22;
+  evtWeight[kV22_w2AB] = wGap22;
+  evtWeight[kV22_w3ABC] = wGap22pt;
 
-  corr[kV32pt_gap] = psubMid[1]*(Q3pos[1]*Q3neg[1]).Re()/wGap32pt;
-  evtWeight[kV32pt_gap] = wGap32pt;
-  corr[kV32_gap] = corr[kV32_w3] = (Q3pos[1]*Q3neg[1]).Re()/wGap32;
-  evtWeight[kV32_gap] = wGap32;
-  evtWeight[kV32_w3] = wGap32pt;
+  corr[kV32ptC_w3ABC] = psubMid[1]*(Q3pos[1]*Q3neg[1]).Re()/wGap32pt;
+  evtWeight[kV32ptC_w3ABC] = wGap32pt;
+  corr[kV32_w2AB] = corr[kV32_w3ABC] = corr[kV32_w4AABB] = (Q3pos[1]*Q3neg[1]).Re()/wGap32;
+  evtWeight[kV32_w2AB] = wGap32;
+  evtWeight[kV32_w3ABC] = wGap32pt;
+  evtWeight[kV32_w4AABB] = w4AABB;
 
   // Two particles in A and two in B. Same four-particle weight as <pt^4>_AABB.
   const TComplex c2A = QA*QA - Q4A;
   const TComplex c2B = QB*QB - Q4B;
-  corr[kV24_gap] = (c2A*TComplex::Conjugate(c2B)).Re()/w4AABB;
-  evtWeight[kV24_gap] = w4AABB;
+  corr[kV24_w4AABB] = (c2A*TComplex::Conjugate(c2B)).Re()/w4AABB;
+  evtWeight[kV24_w4AABB] = w4AABB;
   const TComplex c3A = Q3A*Q3A - Q6A;
   const TComplex c3B = Q3B*Q3B - Q6B;
-  corr[kV34_gap] = (c3A*TComplex::Conjugate(c3B)).Re()/w4AABB;
-  evtWeight[kV34_gap] = w4AABB;
+  corr[kV34_w4AABB] = (c3A*TComplex::Conjugate(c3B)).Re()/w4AABB;
+  evtWeight[kV34_w4AABB] = w4AABB;
 
   for (int i = 0; i < nCorr; ++i) {
     FillCorr(centralityBin, i, corr[i], evtWeight[i]);

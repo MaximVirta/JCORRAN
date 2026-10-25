@@ -74,64 +74,72 @@ class AliAnalysisPtVnWeighted {
   Float_t fptSubMin;
   Float_t fptSubMax;
 
-  // Natural-weight profiles keep the original names. A suffix is the event
-  // weight used for that copy of the same per-event value:
-  //   w2     = M_A * M_B
+  // The suffix is the event weight. C is the mid-rapidity subevent, |eta| < 0.4.
+  //   w1A    = M_A
+  //   w1B    = M_B
+  //   w1C    = M_C
+  //   w2AB   = M_A * M_B
+  //   w2AA   = M_A * (M_A - 1)
+  //   w2BB   = M_B * (M_B - 1)
+  //   w2AC   = M_A * M_C
+  //   w2CB   = M_C * M_B
+  //   w2CC   = M_C * (M_C - 1)
   //   w3AAB  = M_A * (M_A - 1) * M_B
   //   w3ABB  = M_A * M_B * (M_B - 1)
-  //   w4     = M_A * (M_A - 1) * M_B * (M_B - 1)
-  // ptA/ptB themselves are the 1-particle fills (weights M_A and M_B).
-  // pt2* without a suffix are the 2-particle fills, pt3* the 3-particle fills,
-  // and pt4AABB the 4-particle fill.
+  //   w3ABC  = M_A * M_B * M_C
+  //   w4AABB = M_A * (M_A - 1) * M_B * (M_B - 1)
   enum ECorr {
-    kPtA,
-    kPtA_w2,
+    kPtA_w1A,
+    kPtA_w2AB,
+    kPtA_w2AA,
     kPtA_w3AAB,
     kPtA_w3ABB,
-    kPtA_w4,
-    kPtB,
-    kPtB_w2,
+    kPtA_w4AABB,
+    kPtB_w1B,
+    kPtB_w2AB,
+    kPtB_w2BB,
     kPtB_w3AAB,
     kPtB_w3ABB,
-    kPtB_w4,
-    kPtMid,
-    kPtMid_w3,
-    kPt2AB,
+    kPtB_w4AABB,
+    kPtC_w1C,
+    kPtC_w3ABC,
+    kPt2AB_w2AB,
     kPt2AB_w3AAB,
     kPt2AB_w3ABB,
-    kPt2AB_w4,
-    kPt2AA,
+    kPt2AB_w4AABB,
+    kPt2AA_w2AA,
     kPt2AA_w3AAB,
     kPt2AA_w3ABB,
-    kPt2AA_w4,
-    kPt2BB,
+    kPt2AA_w4AABB,
+    kPt2BB_w2BB,
     kPt2BB_w3AAB,
     kPt2BB_w3ABB,
-    kPt2BB_w4,
-    kPt2AMid,
-    kPt2MidB,
-    kPt3AAB,
-    kPt3ABB,
-    kPt3AAB_w4,
-    kPt3ABB_w4,
-    kPt3AMidB,
-    kPt4AABB,
-    kPt2mid,
-    kV22pt_gap,
-    kV22_gap,
-    kV22_w3,
-    kV32pt_gap,
-    kV32_gap,
-    kV32_w3,
-    kV24_gap,
-    kV34_gap,
-    // A–B subevent v_2^2, with the four-particle weight w4.
-    // v22_w4 is one particle in A and one in B. The pT legs are distinct
+    kPt2BB_w4AABB,
+    kPt2AC_w2AC,
+    kPt2CB_w2CB,
+    kPt3AAB_w3AAB,
+    kPt3ABB_w3ABB,
+    kPt3AAB_w4AABB,
+    kPt3ABB_w4AABB,
+    kPt3ABC_w3ABC,
+    kPt4AABB_w4AABB,
+    kPt2CC_w2CC,
+    kV22ptC_w3ABC,
+    kV22_w2AB,
+    kV22_w3ABC,
+    kV32ptC_w3ABC,
+    kV32_w2AB,
+    kV32_w3ABC,
+    kV32_w4AABB,
+    kV24_w4AABB,
+    kV34_w4AABB,
+    // A–B subevent v_2^2, filled with w4AABB.
+    // v22_w4AABB is one particle in A and one in B. The pT legs are distinct
     // from those flow particles.
-    kV22_w4,
-    kV22ptA_w4,
-    kV22ptB_w4,
-    kV22ptAptB_w4,
+    kV22_w4AABB,
+    kV22ptA_w4AABB,
+    kV22ptB_w4AABB,
+    kV22ptAptB_w4AABB,
     kNCorr
   };
   const static Int_t nCorr = kNCorr;
@@ -140,21 +148,21 @@ class AliAnalysisPtVnWeighted {
   TProfile *corrProfiles[nCorr];
 
   TString corrlistnames[nCorr] = {
-    "ptA", "ptA_w2", "ptA_w3AAB", "ptA_w3ABB", "ptA_w4",
-    "ptB", "ptB_w2", "ptB_w3AAB", "ptB_w3ABB", "ptB_w4",
-    "ptMid", "ptMid_w3",
-    "pt2AB", "pt2AB_w3AAB", "pt2AB_w3ABB", "pt2AB_w4",
-    "pt2AA", "pt2AA_w3AAB", "pt2AA_w3ABB", "pt2AA_w4",
-    "pt2BB", "pt2BB_w3AAB", "pt2BB_w3ABB", "pt2BB_w4",
-    "pt2AMid", "pt2MidB",
-    "pt3AAB", "pt3ABB", "pt3AAB_w4", "pt3ABB_w4",
-    "pt3AMidB",
-    "pt4AABB",
-    "pt2mid",
-    "v22pt_gap", "v22_gap", "v22_w3",
-    "v32pt_gap", "v32_gap", "v32_w3",
-    "v24_gap", "v34_gap",
-    "v22_w4", "v22ptA_w4", "v22ptB_w4", "v22ptAptB_w4"};
+    "ptA_w1A", "ptA_w2AB", "ptA_w2AA", "ptA_w3AAB", "ptA_w3ABB", "ptA_w4AABB",
+    "ptB_w1B", "ptB_w2AB", "ptB_w2BB", "ptB_w3AAB", "ptB_w3ABB", "ptB_w4AABB",
+    "ptC_w1C", "ptC_w3ABC",
+    "pt2AB_w2AB", "pt2AB_w3AAB", "pt2AB_w3ABB", "pt2AB_w4AABB",
+    "pt2AA_w2AA", "pt2AA_w3AAB", "pt2AA_w3ABB", "pt2AA_w4AABB",
+    "pt2BB_w2BB", "pt2BB_w3AAB", "pt2BB_w3ABB", "pt2BB_w4AABB",
+    "pt2AC_w2AC", "pt2CB_w2CB",
+    "pt3AAB_w3AAB", "pt3ABB_w3ABB", "pt3AAB_w4AABB", "pt3ABB_w4AABB",
+    "pt3ABC_w3ABC",
+    "pt4AABB_w4AABB",
+    "pt2CC_w2CC",
+    "v22ptC_w3ABC", "v22_w2AB", "v22_w3ABC",
+    "v32ptC_w3ABC", "v32_w2AB", "v32_w3ABC", "v32_w4AABB",
+    "v24_w4AABB", "v34_w4AABB",
+    "v22_w4AABB", "v22ptA_w4AABB", "v22ptB_w4AABB", "v22ptAptB_w4AABB"};
 
   //ClassDef(AliAnalysisPtVnWeighted, 1);
 };

@@ -12,3 +12,5 @@ Example_JCorran/main
 Example_JCorran/main_hdf5
 
 src/Base/jcorranDict.cxx
+
+ExampleLocal/
