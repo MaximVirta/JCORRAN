@@ -39,7 +39,6 @@ class AliAnalysisPtVnWeighted {
   // General methods specific to this analysis class.
   virtual void InitializeArrays();
   virtual void BookAndNestAllLists();
-  virtual void SetUseMultWeight(Bool_t useWeight) {fUseMultWeight = useWeight;}
   void FillCorr(Int_t centralityBin, Int_t index, Double_t value, Double_t weight);
 
   /// General setters/getters.
@@ -66,7 +65,6 @@ class AliAnalysisPtVnWeighted {
   TClonesArray *fInputList;         // Input tracks selected in the JCatalyst.
   TList *fHistList;                 // Base list to hold all output objects.
   Int_t fDebugLevel;                // Verbosity of the class in the terminal.
-  Bool_t fUseMultWeight;
 
   Double_t fCentrality;             // Centrality of the current event.
 
@@ -75,6 +73,7 @@ class AliAnalysisPtVnWeighted {
   Float_t fptSubMax;
 
   // The suffix is the event weight. C is the mid-rapidity subevent, |eta| < 0.4.
+  //   unw    = 1, one profile per observable
   //   w1A    = M_A
   //   w1B    = M_B
   //   w1C    = M_C
@@ -140,6 +139,29 @@ class AliAnalysisPtVnWeighted {
     kV22ptA_w4AABB,
     kV22ptB_w4AABB,
     kV22ptAptB_w4AABB,
+    // Same observables, filled with unit event weight.
+    kPtA_unw,
+    kPtB_unw,
+    kPtC_unw,
+    kPt2AB_unw,
+    kPt2AA_unw,
+    kPt2BB_unw,
+    kPt2AC_unw,
+    kPt2CB_unw,
+    kPt2CC_unw,
+    kPt3AAB_unw,
+    kPt3ABB_unw,
+    kPt3ABC_unw,
+    kPt4AABB_unw,
+    kV22_unw,
+    kV22ptA_unw,
+    kV22ptB_unw,
+    kV22ptAptB_unw,
+    kV22ptC_unw,
+    kV32_unw,
+    kV32ptC_unw,
+    kV24_unw,
+    kV34_unw,
     kNCorr
   };
   const static Int_t nCorr = kNCorr;
@@ -162,7 +184,12 @@ class AliAnalysisPtVnWeighted {
     "v22ptC_w3ABC", "v22_w2AB", "v22_w3ABC",
     "v32ptC_w3ABC", "v32_w2AB", "v32_w3ABC", "v32_w4AABB",
     "v24_w4AABB", "v34_w4AABB",
-    "v22_w4AABB", "v22ptA_w4AABB", "v22ptB_w4AABB", "v22ptAptB_w4AABB"};
+    "v22_w4AABB", "v22ptA_w4AABB", "v22ptB_w4AABB", "v22ptAptB_w4AABB",
+    "ptA_unw", "ptB_unw", "ptC_unw",
+    "pt2AB_unw", "pt2AA_unw", "pt2BB_unw", "pt2AC_unw", "pt2CB_unw", "pt2CC_unw",
+    "pt3AAB_unw", "pt3ABB_unw", "pt3ABC_unw", "pt4AABB_unw",
+    "v22_unw", "v22ptA_unw", "v22ptB_unw", "v22ptAptB_unw", "v22ptC_unw",
+    "v32_unw", "v32ptC_unw", "v24_unw", "v34_unw"};
 
   //ClassDef(AliAnalysisPtVnWeighted, 1);
 };

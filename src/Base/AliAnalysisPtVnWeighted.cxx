@@ -31,7 +31,6 @@ AliAnalysisPtVnWeighted::AliAnalysisPtVnWeighted():
   fHistList(NULL),
   fDebugLevel(0),
   fCentrality(0.),
-  fUseMultWeight(kTRUE),
   fptSubMax(0.8), fptSubMin(0.4),
   fCentralityBins(16)
 {
@@ -46,7 +45,6 @@ AliAnalysisPtVnWeighted::AliAnalysisPtVnWeighted(const char *name):
   fHistList(NULL),
   fDebugLevel(0),
   fCentrality(0.),
-  fUseMultWeight(kTRUE),
   fptSubMax(0.8), fptSubMin(0.4),
   fCentralityBins(9)
 {
@@ -314,6 +312,38 @@ void AliAnalysisPtVnWeighted::UserExec(Option_t *option) {
   corr[kV34_w4AABB] = (c3A*TComplex::Conjugate(c3B)).Re()/w4AABB;
   evtWeight[kV34_w4AABB] = w4AABB;
 
+  // Unit event weight. One profile per observable; the per-event value is unchanged.
+  corr[kPtA_unw] = ptA;
+  corr[kPtB_unw] = ptB;
+  corr[kPtC_unw] = ptC;
+  corr[kPt2AB_unw] = pt2AB;
+  corr[kPt2AA_unw] = pt2AA;
+  corr[kPt2BB_unw] = pt2BB;
+  corr[kPt2AC_unw] = pt2AMid;
+  corr[kPt2CB_unw] = pt2MidB;
+  corr[kPt2CC_unw] = corr[kPt2CC_w2CC];
+  corr[kPt3AAB_unw] = pt3AAB;
+  corr[kPt3ABB_unw] = pt3ABB;
+  corr[kPt3ABC_unw] = pt3AMidB;
+  corr[kPt4AABB_unw] = pt4AABB;
+  corr[kV22_unw] = corr[kV22_w2AB];
+  corr[kV22ptA_unw] = corr[kV22ptA_w4AABB];
+  corr[kV22ptB_unw] = corr[kV22ptB_w4AABB];
+  corr[kV22ptAptB_unw] = corr[kV22ptAptB_w4AABB];
+  corr[kV22ptC_unw] = corr[kV22ptC_w3ABC];
+  corr[kV32_unw] = corr[kV32_w2AB];
+  corr[kV32ptC_unw] = corr[kV32ptC_w3ABC];
+  corr[kV24_unw] = corr[kV24_w4AABB];
+  corr[kV34_unw] = corr[kV34_w4AABB];
+  evtWeight[kPtA_unw] = evtWeight[kPtB_unw] = evtWeight[kPtC_unw] = 1.;
+  evtWeight[kPt2AB_unw] = evtWeight[kPt2AA_unw] = evtWeight[kPt2BB_unw] = 1.;
+  evtWeight[kPt2AC_unw] = evtWeight[kPt2CB_unw] = evtWeight[kPt2CC_unw] = 1.;
+  evtWeight[kPt3AAB_unw] = evtWeight[kPt3ABB_unw] = evtWeight[kPt3ABC_unw] = 1.;
+  evtWeight[kPt4AABB_unw] = 1.;
+  evtWeight[kV22_unw] = evtWeight[kV22ptA_unw] = evtWeight[kV22ptB_unw] = evtWeight[kV22ptAptB_unw] = 1.;
+  evtWeight[kV22ptC_unw] = evtWeight[kV32_unw] = evtWeight[kV32ptC_unw] = 1.;
+  evtWeight[kV24_unw] = evtWeight[kV34_unw] = 1.;
+
   for (int i = 0; i < nCorr; ++i) {
     FillCorr(centralityBin, i, corr[i], evtWeight[i]);
   }
@@ -326,7 +356,6 @@ void AliAnalysisPtVnWeighted::UserExec(Option_t *option) {
 
 // ------------------------------------------------------------------------- //
 void AliAnalysisPtVnWeighted::FillCorr(Int_t centralityBin, Int_t index, Double_t value, Double_t weight) {
-  if (!fUseMultWeight) weight = 1.;
   if (!TMath::Finite(value) || !TMath::Finite(weight) || weight <= 0.) return;
   corrProfiles[index]->Fill(static_cast<Float_t>(centralityBin) + 0.5, value, weight);
 }
